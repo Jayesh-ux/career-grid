@@ -8,59 +8,59 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* Job Platform Dark Theme Design System */
-    --background: 220 25% 8%;
+    /* Job Platform Dark Blue/Teal Theme Design System */
+    --background: 215 28% 9%;
     --foreground: 210 40% 98%;
 
-    --card: 220 25% 10%;
+    --card: 215 28% 11%;
     --card-foreground: 210 40% 98%;
 
-    --popover: 220 25% 12%;
+    --popover: 215 28% 13%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 255 80% 65%;
-    --primary-foreground: 220 25% 8%;
+    --primary: 190 95% 68%;
+    --primary-foreground: 215 28% 9%;
 
-    --secondary: 220 25% 15%;
+    --secondary: 215 28% 16%;
     --secondary-foreground: 210 40% 98%;
 
-    --muted: 220 25% 12%;
+    --muted: 215 28% 13%;
     --muted-foreground: 215 20.2% 65.1%;
 
-    --accent: 280 60% 60%;
+    --accent: 170 70% 55%;
     --accent-foreground: 210 40% 98%;
 
     --success: 140 60% 55%;
-    --success-foreground: 220 25% 8%;
+    --success-foreground: 215 28% 9%;
 
     --warning: 35 90% 60%;
-    --warning-foreground: 220 25% 8%;
+    --warning-foreground: 215 28% 9%;
 
     --destructive: 0 70% 60%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 220 25% 20%;
-    --input: 220 25% 15%;
-    --ring: 255 80% 65%;
+    --border: 215 28% 22%;
+    --input: 215 28% 16%;
+    --ring: 190 95% 68%;
 
     --radius: 0.75rem;
 
     /* Job Platform Specific Colors */
-    --job-card: 220 25% 12%;
-    --job-card-hover: 220 25% 15%;
+    --job-card: 215 28% 13%;
+    --job-card-hover: 215 28% 16%;
     --company-accent: 200 70% 55%;
     --salary-highlight: 140 60% 55%;
     --urgent-badge: 15 90% 65%;
     
     /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(255 80% 65%), hsl(280 60% 60%));
-    --gradient-secondary: linear-gradient(135deg, hsl(220 25% 15%), hsl(220 25% 20%));
-    --gradient-hero: linear-gradient(135deg, hsl(220 25% 8%) 0%, hsl(240 25% 12%) 50%, hsl(260 30% 15%) 100%);
+    --gradient-primary: linear-gradient(135deg, hsl(190 95% 68%), hsl(170 70% 55%));
+    --gradient-secondary: linear-gradient(135deg, hsl(215 28% 16%), hsl(215 28% 22%));
+    --gradient-hero: linear-gradient(135deg, hsl(215 28% 9%) 0%, hsl(215 30% 12%) 50%, hsl(215 32% 15%) 100%);
     
     /* Shadows */
-    --shadow-card: 0 4px 20px -4px hsl(255 80% 65% / 0.1);
-    --shadow-card-hover: 0 8px 30px -6px hsl(255 80% 65% / 0.2);
-    --shadow-button: 0 4px 15px -3px hsl(255 80% 65% / 0.3);
+    --shadow-card: 0 4px 20px -4px hsl(190 95% 68% / 0.1);
+    --shadow-card-hover: 0 8px 30px -6px hsl(190 95% 68% / 0.2);
+    --shadow-button: 0 4px 15px -3px hsl(190 95% 68% / 0.3);
     
     /* Animation */
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
