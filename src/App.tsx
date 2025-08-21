@@ -1,11 +1,14 @@
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
+import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "./context/AuthContext";
+import { JobProvider } from "./context/JobContext";
 import Index from "./pages/Index";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
+import FindJobs from "./pages/FindJobs";
+import JobDetail from "./pages/JobDetail";
+import Dashboard from "./pages/Dashboard";
+import Companies from "./pages/Companies";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -14,16 +17,20 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
+      <AuthProvider>
+        <JobProvider>
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/find-jobs" element={<FindJobs />} />
+              <Route path="/job/:id" element={<JobDetail />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/companies" element={<Companies />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </JobProvider>
+      </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );
