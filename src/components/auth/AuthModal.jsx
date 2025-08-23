@@ -119,8 +119,8 @@ const AuthModal = ({ isOpen, onClose, defaultTab = 'login' }) => {
         onClick={onClose}
         aria-label="Close modal"
       />
-      <div className="fixed inset-0 flex items-center justify-center p-4">
-        <div className="relative w-full max-w-md bg-card rounded-2xl shadow-2xl animate-scale-in max-h-[90vh] overflow-y-auto">
+      <div className="fixed inset-0 flex min-h-screen items-center justify-center p-4">
+        <div className="relative w-full max-w-md bg-card rounded-2xl shadow-2xl animate-scale-in max-h-[calc(100vh-2rem)] overflow-y-auto m-4">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 z-10 p-2 rounded-full hover:bg-muted transition-colors"
