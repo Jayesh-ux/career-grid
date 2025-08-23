@@ -8,58 +8,29 @@ import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
 import Header from "@/components/Header";
 import JobCard from "@/components/JobCard";
-import { useJob } from "@/context/JobContext";
+import { useJobs } from "@/context/JobContext";
 
 export default function FindJobs() {
-  const { jobs, searchJobs } = useJob();
+  const { jobs, getFilteredJobs, updateFilters, clearFilters: clearJobFilters, filters } = useJobs();
   const [viewType, setViewType] = useState<'grid' | 'list'>('grid');
-  const [filters, setFilters] = useState({
-    search: '',
-    location: '',
-    jobType: [] as string[],
-    experience: '',
-    salaryRange: [0, 200000],
-    datePosted: ''
-  });
 
-  const filteredJobs = jobs.filter(job => {
-    if (filters.search && !job.title.toLowerCase().includes(filters.search.toLowerCase()) && 
-        !job.company.toLowerCase().includes(filters.search.toLowerCase())) {
-      return false;
-    }
-    if (filters.location && !job.location.toLowerCase().includes(filters.location.toLowerCase())) {
-      return false;
-    }
-    if (filters.jobType.length > 0 && !filters.jobType.includes(job.type)) {
-      return false;
-    }
-    if (filters.experience && job.experience !== filters.experience) {
-      return false;
-    }
-    if (job.salary.min < filters.salaryRange[0] || job.salary.max > filters.salaryRange[1]) {
-      return false;
-    }
-    return true;
-  });
+  // Use the context's filtered jobs instead of local filtering
+  const filteredJobs = getFilteredJobs();
 
   const handleJobTypeChange = (jobType: string, checked: boolean) => {
-    setFilters(prev => ({
-      ...prev,
-      jobType: checked 
-        ? [...prev.jobType, jobType]
-        : prev.jobType.filter(type => type !== jobType)
-    }));
+    const newJobTypes = checked 
+      ? [...(filters.jobType || []), jobType]
+      : (filters.jobType || []).filter(type => type !== jobType);
+    
+    updateFilters({ jobType: newJobTypes });
+  };
+
+  const handleFilterChange = (key: string, value: any) => {
+    updateFilters({ [key]: value });
   };
 
   const clearFilters = () => {
-    setFilters({
-      search: '',
-      location: '',
-      jobType: [],
-      experience: '',
-      salaryRange: [0, 200000],
-      datePosted: ''
-    });
+    clearJobFilters();
   };
 
   return (
@@ -73,21 +44,21 @@ export default function FindJobs() {
           <div className="flex flex-col md:flex-row gap-4 p-6 rounded-2xl glass">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Job title, company, or keyword"
-                value={filters.search}
-                onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
-                className="pl-10"
-              />
+                <Input
+                  placeholder="Job title, company, or keyword"
+                  value={filters.search}
+                  onChange={(e) => handleFilterChange('search', e.target.value)}
+                  className="pl-10"
+                />
             </div>
             <div className="flex-1 relative">
               <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Location"
-                value={filters.location}
-                onChange={(e) => setFilters(prev => ({ ...prev, location: e.target.value }))}
-                className="pl-10"
-              />
+                <Input
+                  placeholder="Location"
+                  value={filters.location}
+                  onChange={(e) => handleFilterChange('location', e.target.value)}
+                  className="pl-10"
+                />
             </div>
             <Button className="bg-gradient-primary">
               <Search className="h-4 w-4 mr-2" />
@@ -130,7 +101,7 @@ export default function FindJobs() {
               {/* Experience Level */}
               <div className="mb-6">
                 <h4 className="font-medium mb-3">Experience Level</h4>
-                <Select value={filters.experience} onValueChange={(value) => setFilters(prev => ({ ...prev, experience: value }))}>
+                <Select value={filters.experience} onValueChange={(value) => handleFilterChange('experience', value)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select level" />
                   </SelectTrigger>
@@ -150,7 +121,7 @@ export default function FindJobs() {
                 <div className="px-2">
                   <Slider
                     value={filters.salaryRange}
-                    onValueChange={(value) => setFilters(prev => ({ ...prev, salaryRange: value }))}
+                    onValueChange={(value) => handleFilterChange('salaryRange', value)}
                     max={200000}
                     min={0}
                     step={5000}
@@ -166,13 +137,13 @@ export default function FindJobs() {
               {/* Date Posted */}
               <div className="mb-6">
                 <h4 className="font-medium mb-3">Date Posted</h4>
-                <Select value={filters.datePosted} onValueChange={(value) => setFilters(prev => ({ ...prev, datePosted: value }))}>
+                <Select value={filters.datePosted} onValueChange={(value) => handleFilterChange('datePosted', value)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Any time" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="">Any time</SelectItem>
-                    <SelectItem value="24h">Last 24 hours</SelectItem>
+                    <SelectItem value="24hours">Last 24 hours</SelectItem>
                     <SelectItem value="week">Last week</SelectItem>
                     <SelectItem value="month">Last month</SelectItem>
                   </SelectContent>
