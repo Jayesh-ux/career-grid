@@ -74,11 +74,11 @@ export default function HeroSection() {
       </div>
 
       {/* Content */}
-      <div className="relative z-10 container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="max-w-6xl mx-auto">
+      <div className="relative z-10 container mx-auto px-4 sm:px-6 lg:px-8 flex flex-col justify-center items-center">
+        <div className="max-w-6xl w-full mx-auto">
           <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
             {/* Left Content */}
-            <div className="text-center lg:text-left space-y-6">
+            <div className="flex flex-col justify-center items-center lg:items-start space-y-6">
               {/* Badge with scroll animation */}
               <div className={`transform transition-all duration-1000 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
                 <Badge 
@@ -90,20 +90,20 @@ export default function HeroSection() {
               
               {/* Main Heading with staggered animation */}
               <div className={`space-y-4 transform transition-all duration-1000 delay-200 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
-                <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold leading-tight">
+                <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold leading-tight text-center lg:text-left">
                   Discover Your{" "}
                   <span className="gradient-text">Perfect Job</span>
                   <br className="hidden sm:block" />
                   <span className="block mt-2">Match Today</span>
                 </h1>
                 
-                <p className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl lg:max-w-none">
+                <p className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl lg:max-w-none text-center lg:text-left mx-auto lg:mx-0">
                   Connect with top employers, explore opportunities, and advance your career with our AI-powered job matching platform.
                 </p>
               </div>
 
               {/* CTA Buttons */}
-              <div className={`flex flex-col sm:flex-row gap-4 justify-center lg:justify-start transform transition-all duration-1000 delay-400 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
+              <div className={`flex flex-col sm:flex-row gap-4 justify-center lg:justify-start transform transition-all duration-1000 delay-400 w-full sm:w-auto ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
                 <Button 
                   size="lg"
                   onClick={handleGetStarted}
@@ -125,8 +125,8 @@ export default function HeroSection() {
             </div>
 
             {/* Right Content - Search Card */}
-            <div className={`transform transition-all duration-1000 delay-600 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
-              <div className="bg-card/80 backdrop-blur-xl border border-border/50 rounded-3xl p-6 sm:p-8 shadow-card">
+            <div className={`flex justify-center items-center transform transition-all duration-1000 delay-600 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
+              <div className="bg-card/80 backdrop-blur-xl border border-border/50 rounded-3xl p-6 sm:p-8 shadow-card w-full max-w-md mx-auto">
                 <h3 className="text-xl font-semibold mb-6 text-center">Quick Job Search</h3>
                 <div className="space-y-4">
                   <div className="relative">
@@ -160,8 +160,8 @@ export default function HeroSection() {
 
                 {/* Popular Searches */}
                 <div className="mt-6">
-                  <p className="text-sm text-muted-foreground mb-3">Popular searches:</p>
-                  <div className="flex flex-wrap gap-2">
+                  <p className="text-sm text-muted-foreground mb-3 text-center">Popular searches:</p>
+                  <div className="flex flex-wrap gap-2 justify-center">
                     {popularSearches.slice(0, 4).map((search, index) => (
                       <Badge
                         key={index}
@@ -178,62 +178,12 @@ export default function HeroSection() {
             </div>
           </div>
 
-          {/* Search Bar */}
-          <div className="bg-card/80 backdrop-blur-xl border border-border/50 rounded-2xl p-6 mb-12 animate-scale-in shadow-card">
-            <div className="flex flex-col lg:flex-row gap-4">
-              <div className="flex-1 relative">
-                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                <Input
-                  placeholder="Job title, keywords, or company"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-12 h-12 text-base border-border/50 focus:border-primary/50 bg-background/50"
-                />
-              </div>
-              
-              <div className="flex-1 relative">
-                <MapPin className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                <Input
-                  placeholder="City, state, or remote"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  className="pl-12 h-12 text-base border-border/50 focus:border-primary/50 bg-background/50"
-                />
-              </div>
-              
-              <Button 
-                onClick={handleSearch}
-                size="lg"
-                className="h-12 px-8 bg-gradient-primary hover:shadow-button btn-glow text-primary-foreground font-semibold"
-              >
-                Search Jobs
-              </Button>
-            </div>
-          </div>
-
-          {/* Popular Searches */}
-          <div className="mb-16 animate-slide-in-right">
-            <p className="text-sm text-muted-foreground mb-4">Popular searches:</p>
-            <div className="flex flex-wrap justify-center gap-2">
-              {popularSearches.map((search, index) => (
-                <Badge
-                  key={index}
-                  variant="secondary"
-                  className="cursor-pointer hover:bg-primary/20 hover:text-primary transition-colors duration-200 px-3 py-1"
-                  onClick={() => setSearchQuery(search)}
-                >
-                  {search}
-                </Badge>
-              ))}
-            </div>
-          </div>
-
           {/* Stats */}
-          <div className={`grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mt-12 lg:mt-16 max-w-4xl mx-auto transform transition-all duration-1000 delay-800 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
+          <div className={`grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mt-12 lg:mt-16 max-w-4xl mx-auto justify-center items-center transform transition-all duration-1000 delay-800 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
             {stats.map((stat, index) => (
               <div
                 key={index}
-                className="text-center space-y-2 bg-card/40 backdrop-blur-sm rounded-2xl p-4 border border-border/30 hover:bg-card/60 transition-all duration-300 group"
+                className="text-center space-y-2 bg-card/40 backdrop-blur-sm rounded-2xl p-4 border border-border/30 hover:bg-card/60 transition-all duration-300 group flex flex-col items-center"
                 style={{ 
                   animationDelay: `${800 + index * 100}ms`,
                   transform: isVisible ? 'translateY(0)' : 'translateY(20px)',
@@ -242,7 +192,7 @@ export default function HeroSection() {
                 }}
               >
                 <div className="flex justify-center">
-                  <div className="p-3 rounded-full bg-primary/20 text-primary group-hover:bg-primary/30 group-hover:scale-110 transition-all duration-300">
+                  <div className="p-3 rounded-full bg-primary/20 text-primary group-hover:bg-primary/30 group-hover:scale-110 transition-all duration-300 flex items-center justify-center">
                     <stat.icon className="h-5 w-5 sm:h-6 sm:w-6" />
                   </div>
                 </div>
