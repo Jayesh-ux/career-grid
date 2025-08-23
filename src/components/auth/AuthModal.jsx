@@ -113,11 +113,17 @@ const AuthModal = ({ isOpen, onClose, defaultTab = 'login' }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="relative w-full max-w-md mx-4 bg-card rounded-2xl shadow-2xl animate-scale-in">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto">
+      <div 
+        className="fixed inset-0"
+        onClick={onClose}
+        aria-label="Close modal"
+      />
+      <div className="relative w-full max-w-md bg-card rounded-2xl shadow-2xl animate-scale-in my-8 max-h-[90vh] overflow-y-auto">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 rounded-full hover:bg-muted transition-colors"
+          className="absolute top-4 right-4 z-10 p-2 rounded-full hover:bg-muted transition-colors"
+          aria-label="Close modal"
         >
           <X className="h-5 w-5" />
         </button>
