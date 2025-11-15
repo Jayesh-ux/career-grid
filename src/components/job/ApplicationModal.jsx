@@ -4,12 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useJobs } from '@/context/JobContext';
-import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
 const ApplicationModal = ({ isOpen, onClose, job }) => {
   const { applyToJob } = useJobs();
-  const { user } = useAuth();
+  // Auth removed — user not available
+  const user = null;
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [applicationData, setApplicationData] = useState({
@@ -23,6 +23,15 @@ const ApplicationModal = ({ isOpen, onClose, job }) => {
     setLoading(true);
 
     try {
+      if (!user) {
+        toast({
+          title: "Sign-in required",
+          description: "Sign-in was removed. This action is unavailable.",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
       await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
       
       applyToJob(job.id, {

@@ -4,18 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/context/AuthContext";
-import AuthModal from "@/components/auth/AuthModal";
 import heroImage from "@/assets/hero-bg.jpg";
 
 export default function HeroSection() {
   const [searchQuery, setSearchQuery] = useState("");
   const [location, setLocation] = useState("");
   const [isVisible, setIsVisible] = useState(false);
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [authModalTab, setAuthModalTab] = useState<'login' | 'register'>('login');
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  // Auth removed — simplified CTAs
 
   useEffect(() => {
     setIsVisible(true);
@@ -43,23 +39,7 @@ export default function HeroSection() {
     }
   };
 
-  const handleGetStarted = () => {
-    if (isAuthenticated) {
-      navigate('/dashboard');
-    } else {
-      setAuthModalTab('register');
-      setIsAuthModalOpen(true);
-    }
-  };
-
-  const handleSignIn = () => {
-    if (isAuthenticated) {
-      navigate('/dashboard');
-    } else {
-      setAuthModalTab('login');
-      setIsAuthModalOpen(true);
-    }
-  };
+  const handleExplore = () => navigate('/find-jobs');
 
   return (
     <section className="relative overflow-hidden py-12 sm:py-16 md:py-20 lg:py-32 min-h-screen flex items-center">
@@ -102,24 +82,14 @@ export default function HeroSection() {
                 </p>
               </div>
 
-              {/* CTA Buttons */}
-              <div className={`flex flex-col sm:flex-row gap-4 justify-center lg:justify-start transform transition-all duration-1000 delay-400 w-full sm:w-auto ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
+              {/* CTA Button — simplified (auth removed) */}
+              <div className={`transform transition-all duration-1000 delay-400 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
                 <Button 
                   size="lg"
-                  onClick={handleGetStarted}
-                  className="w-full sm:w-auto h-12 px-8 bg-gradient-primary hover:shadow-button btn-glow text-primary-foreground font-semibold group"
+                  onClick={handleExplore}
+                  className="w-full sm:w-auto h-12 px-8 bg-gradient-primary hover:shadow-button btn-glow text-primary-foreground font-semibold"
                 >
-                  <UserPlus className="w-5 h-5 mr-2 group-hover:rotate-12 transition-transform duration-300" />
-                  {isAuthenticated ? 'Go to Dashboard' : 'Get Started Free'}
-                </Button>
-                <Button 
-                  variant="outline"
-                  size="lg"
-                  onClick={handleSignIn}
-                  className="w-full sm:w-auto h-12 px-8 border-primary/30 hover:bg-primary/10 hover:border-primary/50 transition-all duration-300 group"
-                >
-                  <LogIn className="w-5 h-5 mr-2 group-hover:translate-x-1 transition-transform duration-300" />
-                  {isAuthenticated ? 'Dashboard' : 'Sign In'}
+                  Explore Jobs
                 </Button>
               </div>
             </div>
@@ -211,12 +181,7 @@ export default function HeroSection() {
       <div className="absolute bottom-20 right-10 w-32 h-32 bg-accent/10 rounded-full blur-xl floating" style={{ animationDelay: '1s' }} />
       <div className="absolute top-1/2 left-1/4 w-16 h-16 bg-company-accent/10 rounded-full blur-xl floating" style={{ animationDelay: '2s' }} />
 
-      {/* Auth Modal */}
-      <AuthModal 
-        isOpen={isAuthModalOpen} 
-        onClose={() => setIsAuthModalOpen(false)}
-        defaultTab={authModalTab}
-      />
+      {/* Auth removed: modal and context cleaned up */}
     </section>
   );
 }

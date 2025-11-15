@@ -5,22 +5,20 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useJobs } from '@/context/JobContext';
-import { useAuth } from '@/context/AuthContext';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import JobCard from '@/components/JobCard';
 import ApplicationModal from '@/components/job/ApplicationModal';
-import AuthModal from '@/components/auth/AuthModal';
 import { useToast } from '@/hooks/use-toast';
 
 const JobDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { getJobById, jobs, saveJob, savedJobs } = useJobs();
-  const { isAuthenticated } = useAuth();
+  // Auth removed — treat user as unauthenticated and redirect to homepage when needed
+  const isAuthenticated = false;
   const { toast } = useToast();
   const [showApplicationModal, setShowApplicationModal] = useState(false);
-  const [showAuthModal, setShowAuthModal] = useState(false);
 
   const job = getJobById(id);
   const isSaved = savedJobs.includes(parseInt(id));
@@ -48,7 +46,7 @@ const JobDetail = () => {
 
   const handleApplyClick = () => {
     if (!isAuthenticated) {
-      setShowAuthModal(true);
+      navigate('/');
       return;
     }
     setShowApplicationModal(true);
@@ -56,10 +54,10 @@ const JobDetail = () => {
 
   const handleSaveJob = () => {
     if (!isAuthenticated) {
-      setShowAuthModal(true);
+      navigate('/');
       return;
     }
-    
+
     saveJob(job.id);
     toast({
       title: isSaved ? "Job Removed" : "Job Saved",
@@ -351,11 +349,7 @@ const JobDetail = () => {
         job={job}
       />
       
-      <AuthModal
-        isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-        defaultTab="login"
-      />
+  {/* Auth modal removed */}
     </div>
   );
 };
