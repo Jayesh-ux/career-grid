@@ -1,8 +1,11 @@
 import JobCard from "./JobCard";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, TrendingUp } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export default function FeaturedJobs() {
+  const navigate = useNavigate();
+  
   const featuredJobs = [
     {
       id: "1",
@@ -102,15 +105,33 @@ export default function FeaturedJobs() {
 
         {/* Jobs Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-          {featuredJobs.map((job, index) => (
-            <div 
-              key={job.id}
-              className="animate-slide-in-right"
-              style={{ animationDelay: `${index * 0.1}s` }}
-            >
-              <JobCard job={job} />
+          {featuredJobs && featuredJobs.length > 0 ? (
+            featuredJobs.map((job, index) => (
+              <div 
+                key={job.id}
+                className="animate-slide-in-right"
+                style={{ animationDelay: `${index * 0.1}s` }}
+              >
+                <JobCard 
+                  jobId={job.id} 
+                  title={job.title}
+                  company={job.company}
+                  location={job.location}
+                  type={job.type}
+                  salary={job.salary}
+                  description={job.description}
+                  posted={job.posted}
+                  remote={job.remote}
+                  skills={job.skills}
+                  isPublic={true}
+                />
+              </div>
+            ))
+          ) : (
+            <div className="col-span-full text-center py-8">
+              <p className="text-muted-foreground">No featured jobs available</p>
             </div>
-          ))}
+          )}
         </div>
 
         {/* View All Jobs Button */}
@@ -118,6 +139,7 @@ export default function FeaturedJobs() {
           <Button 
             size="lg" 
             className="bg-gradient-primary hover:shadow-button btn-glow text-primary-foreground font-semibold px-8"
+            onClick={() => navigate('/find-jobs')}
           >
             View All Jobs
             <ArrowRight className="ml-2 h-4 w-4" />

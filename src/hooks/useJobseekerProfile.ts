@@ -4,7 +4,7 @@ import {
   WorkExperienceApi,
   EducationApi,
   SkillsApi,
-  ProfileApiError,
+  ApiError,
   CreateJobseekerProfileRequest,
   UpdateJobseekerProfileRequest,
   JobseekerProfileResponse,
@@ -16,7 +16,7 @@ import {
   EducationResponse,
   AddSkillRequest,
   JobseekerSkillResponse,
-} from '@/lib/profileApi';
+} from '@/lib/api';
 
 interface UseJobseekerProfileState {
   profile: JobseekerProfileResponse | null;
@@ -38,7 +38,7 @@ export const useJobseekerProfile = () => {
   });
 
   const handleError = useCallback((error: unknown) => {
-    const message = error instanceof ProfileApiError ? error.message : 'An error occurred';
+    const message = error instanceof ApiError ? error.message : 'An error occurred';
     setState(prev => ({ ...prev, error: message }));
     throw error;
   }, []);

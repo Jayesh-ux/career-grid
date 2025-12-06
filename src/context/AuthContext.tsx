@@ -1,5 +1,22 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import api, { AuthApi, UserApi, UserResponse, ApiError } from '@/lib/api';
+import {
+  useRegister,
+  useVerifyLoginOtp,
+  useLogin,
+  useVerifyRegistrationOtp,
+  useResendOtp,
+  useForgotPassword,
+  useVerifyResetOtp,
+  useResetPassword,
+  useCurrentUser,
+  useChangePassword,
+  useLoginHistory,
+  useRequestPhoneVerification,
+  useVerifyUpdatedPhone,
+  useUpdateUser,
+  useDeactivateAccount,
+} from '@/hooks/useUserApi';
+import { UserResponse, AuthResponse } from '@/api/types/user';
 
 export type AuthState = {
   token: string | null;
@@ -31,107 +48,122 @@ type AuthContextValue = AuthState & {
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem('auth_token'));
+  const [token, setToken] = useState<string | null>(() => localStorage.getItem('authToken'));
   const [user, setUser] = useState<UserResponse | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(!!localStorage.getItem('authToken'));
+
+  // API mutations
+  const { mutateAsync: registerAsync } = useRegister();
+  const { mutateAsync: verifyRegOtpAsync } = useVerifyRegistrationOtp();
+  const { mutateAsync: loginAsync } = useLogin();
+  const { mutateAsync: verifyLoginOtpAsync } = useVerifyLoginOtp();
+  const { mutateAsync: resendOtpAsync } = useResendOtp();
+  const { mutateAsync: forgotPasswordAsync } = useForgotPassword();
+  const { mutateAsync: verifyResetOtpAsync } = useVerifyResetOtp();
+  const { mutateAsync: resetPasswordAsync } = useResetPassword();
+  const { mutateAsync: changePasswordAsync } = useChangePassword();
+  const { mutateAsync: requestPhoneVerAsync } = useRequestPhoneVerification();
+  const { mutateAsync: verifyUpdatedPhoneAsync } = useVerifyUpdatedPhone();
+  const { mutateAsync: updateUserAsync } = useUpdateUser();
+  const { mutateAsync: deactivateAsync } = useDeactivateAccount();
+  const { data: currentUserData, refetch: refetchUser } = useCurrentUser(!!token);
+  const { mutateAsync: getLoginHistoryAsync } = useLoginHistory();
+
+  // Sync currentUser data to state
+  useEffect(() => {
+    if (currentUserData) {
+      setUser(currentUserData);
+      setLoading(false);
+    } else if (!token) {
+      setLoading(false);
+    }
+  }, [currentUserData, token]);
 
   // persist token
   useEffect(() => {
-    if (token) localStorage.setItem('auth_token', token);
-    else localStorage.removeItem('auth_token');
-  }, [token]);
-
-  const refreshMe = useCallback(async () => {
-    if (!token) return;
-    try {
-      const me = await UserApi.me();
-      setUser(me);
-    } catch (e) {
-      // if unauthorized, clear
-      if (e instanceof ApiError && e.status === 401) {
-        setToken(null);
-        setUser(null);
-      }
+    if (token) {
+      localStorage.setItem('authToken', token);
+    } else {
+      localStorage.removeItem('authToken');
     }
   }, [token]);
 
+  // Refetch user when token changes
   useEffect(() => {
-    (async () => {
+    if (token) {
       setLoading(true);
-      if (token) {
-        await refreshMe();
-      }
+      refetchUser();
+    } else {
       setLoading(false);
-    })();
-  }, [token, refreshMe]);
+      setUser(null);
+    }
+  }, [token, refetchUser]);
 
   // flows
   const register = useCallback(async (input: { email: string; password: string; phone?: string; userType: string; name?: string }) => {
-    await AuthApi.register(input);
-  }, []);
+    await registerAsync(input);
+  }, [registerAsync]);
 
   const verifyRegistrationOtp = useCallback(async (input: { phone: string; otp: string }) => {
-    const res = await AuthApi.verifyRegistrationOtp(input);
+    const res = await verifyRegOtpAsync(input);
     setToken(res.token);
-    await refreshMe();
-  }, [refreshMe]);
+  }, [verifyRegOtpAsync]);
 
   const login = useCallback(async (input: { email: string; password: string }) => {
-    await AuthApi.login(input);
-  }, []);
+    await loginAsync(input);
+  }, [loginAsync]);
 
   const verifyLoginOtp = useCallback(async (input: { phone: string; otp: string }) => {
-    const res = await AuthApi.verifyLoginOtp(input);
+    const res = await verifyLoginOtpAsync(input);
     setToken(res.token);
-    await refreshMe();
-  }, [refreshMe]);
+  }, [verifyLoginOtpAsync]);
 
   const resendOtp = useCallback(async (input: { phone: string; purpose: 'registration' | 'login' | 'password_reset' }) => {
-    await AuthApi.resendOtp(input);
-  }, []);
+    await resendOtpAsync(input);
+  }, [resendOtpAsync]);
 
   const forgotPassword = useCallback(async (input: { phone: string }) => {
-    await AuthApi.forgotPassword(input);
-  }, []);
+    await forgotPasswordAsync(input);
+  }, [forgotPasswordAsync]);
 
   const verifyResetOtp = useCallback(async (input: { phone: string; otp: string }) => {
-    const resetToken = await AuthApi.verifyResetOtp(input);
+    const resetToken = await verifyResetOtpAsync(input);
     return resetToken;
-  }, []);
+  }, [verifyResetOtpAsync]);
 
   const resetPassword = useCallback(async (input: { resetToken: string; newPassword: string }) => {
-    await AuthApi.resetPassword(input);
-  }, []);
+    await resetPasswordAsync(input);
+  }, [resetPasswordAsync]);
 
   // user
   const updateMe = useCallback(async (input: { name?: string; email?: string; phone?: string }) => {
-    const updated = await UserApi.updateMe(input);
+    const updated = await updateUserAsync(input);
     setUser(updated);
-  }, []);
+  }, [updateUserAsync]);
 
   const requestPhoneVerification = useCallback(async () => {
-    await UserApi.requestPhoneVerification();
-  }, []);
+    await requestPhoneVerAsync({});
+  }, [requestPhoneVerAsync]);
 
   const verifyUpdatedPhone = useCallback(async (input: { otp: string }) => {
-    const updated = await UserApi.verifyUpdatedPhone(input);
+    const updated = await verifyUpdatedPhoneAsync(input);
     setUser(updated);
-  }, []);
+  }, [verifyUpdatedPhoneAsync]);
 
   const changePassword = useCallback(async (input: { currentPassword: string; newPassword: string }) => {
-    await UserApi.changePassword(input);
-  }, []);
+    await changePasswordAsync(input);
+  }, [changePasswordAsync]);
 
   const deactivate = useCallback(async (input: { password: string; reason?: string }) => {
-    await UserApi.deactivate(input);
+    await deactivateAsync(input);
     // After deactivate, log out locally
     setToken(null);
     setUser(null);
-  }, []);
+  }, [deactivateAsync]);
 
   const loginHistory = useCallback(async (limit = 10) => {
-    return await UserApi.loginHistory(limit);
-  }, []);
+    return await getLoginHistoryAsync(limit);
+  }, [getLoginHistoryAsync]);
 
   const logout = useCallback(() => {
     setToken(null);
@@ -150,7 +182,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     forgotPassword,
     verifyResetOtp,
     resetPassword,
-    refreshMe,
+    refreshMe: refetchUser,
     updateMe,
     requestPhoneVerification,
     verifyUpdatedPhone,
@@ -158,7 +190,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     deactivate,
     loginHistory,
     logout,
-  }), [token, user, loading, register, verifyRegistrationOtp, login, verifyLoginOtp, resendOtp, forgotPassword, verifyResetOtp, resetPassword, refreshMe, updateMe, requestPhoneVerification, verifyUpdatedPhone, changePassword, deactivate, loginHistory, logout]);
+  }), [token, user, loading, register, verifyRegistrationOtp, login, verifyLoginOtp, resendOtp, forgotPassword, verifyResetOtp, resetPassword, refetchUser, updateMe, requestPhoneVerification, verifyUpdatedPhone, changePassword, deactivate, loginHistory, logout]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

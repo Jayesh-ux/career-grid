@@ -9,15 +9,93 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useNavigate } from 'react-router-dom';
 
+// Sample companies for public browsing
+const SAMPLE_COMPANIES = [
+  {
+    id: '1',
+    name: 'TechCorp Inc.',
+    industry: 'Technology',
+    location: 'San Francisco, CA',
+    employees: '1,000-5,000',
+    rating: 4.8,
+    openJobs: 24,
+    description: 'Leading technology company focused on innovation and digital transformation.',
+    benefits: ['Health Insurance', 'Remote Work', 'Stock Options', 'Learning Budget'],
+    logo: 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=400&h=300'
+  },
+  {
+    id: '2',
+    name: 'StartupXYZ',
+    industry: 'Fintech',
+    location: 'New York, NY',
+    employees: '100-500',
+    rating: 4.6,
+    openJobs: 8,
+    description: 'Fast-growing fintech startup revolutionizing digital payments and banking.',
+    benefits: ['Equity', 'Flexible Hours', 'Health & Dental', 'Team Events'],
+    logo: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=400&h=300'
+  },
+  {
+    id: '3',
+    name: 'Design Studio',
+    industry: 'Creative',
+    location: 'Los Angeles, CA',
+    employees: '50-100',
+    rating: 4.9,
+    openJobs: 6,
+    description: 'Award-winning design studio creating exceptional digital experiences.',
+    benefits: ['Creative Freedom', 'Work-Life Balance', 'Professional Growth'],
+    logo: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=400&h=300'
+  },
+  {
+    id: '4',
+    name: 'AI Solutions',
+    industry: 'Artificial Intelligence',
+    location: 'Austin, TX',
+    employees: '200-1,000',
+    rating: 4.7,
+    openJobs: 15,
+    description: 'Pioneering AI company developing cutting-edge machine learning solutions.',
+    benefits: ['Research Time', 'Conference Budget', 'Stock Options'],
+    logo: 'https://images.unsplash.com/photo-1551434678-e076c223a692?w=400&h=300'
+  },
+  {
+    id: '5',
+    name: 'CloudTech',
+    industry: 'Cloud Services',
+    location: 'Seattle, WA',
+    employees: '500-1,000',
+    rating: 4.5,
+    openJobs: 32,
+    description: 'Leading cloud infrastructure provider helping businesses scale globally.',
+    benefits: ['Remote First', 'Learning & Development', 'Health Coverage'],
+    logo: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=400&h=300'
+  },
+  {
+    id: '6',
+    name: 'GrowthCo',
+    industry: 'Marketing',
+    location: 'Chicago, IL',
+    employees: '100-500',
+    rating: 4.4,
+    openJobs: 12,
+    description: 'Full-service marketing agency helping brands achieve sustainable growth.',
+    benefits: ['Creative Environment', 'Flexible PTO', 'Growth Opportunities'],
+    logo: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=400&h=300'
+  }
+];
+
 const Companies = () => {
-  const { companies } = useJobs();
+  const { companies = [] } = useJobs();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedIndustry, setSelectedIndustry] = useState('');
 
-  const industries = [...new Set(companies.map(company => company.industry))];
+  // Use sample companies if API companies not available
+  const companiesToDisplay = companies && companies.length > 0 ? companies : SAMPLE_COMPANIES;
+  const industries = [...new Set(companiesToDisplay.map(company => company.industry))];
 
-  const filteredCompanies = companies.filter(company => {
+  const filteredCompanies = companiesToDisplay.filter(company => {
     const matchesSearch = company.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          company.description.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesIndustry = !selectedIndustry || company.industry === selectedIndustry;
@@ -134,6 +212,10 @@ const Companies = () => {
                     variant="outline" 
                     size="sm" 
                     className="flex-1 hover:bg-primary/10 hover:text-primary hover:border-primary/30"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/companies/${company.id}`);
+                    }}
                   >
                     View Profile
                   </Button>

@@ -1,9 +1,51 @@
 import { Link } from "react-router-dom";
+import { useState } from "react";
 import { Briefcase, Mail, MapPin, Phone, Facebook, Twitter, Linkedin, Instagram } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 
 export default function Footer() {
+  const [email, setEmail] = useState("");
+  const [subscribing, setSubscribing] = useState(false);
+
+  const handleSubscribe = async () => {
+    if (!email) {
+      toast.error("Please enter your email address");
+      return;
+    }
+    
+    try {
+      setSubscribing(true);
+      
+      // Call newsletter subscription endpoint
+      const response = await fetch('http://localhost:8080/api/v1/newsletter/subscribe', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          // Add auth token if available
+          ...(localStorage.getItem('authToken') && {
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+          })
+        },
+        body: JSON.stringify({ email })
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Subscription failed');
+      }
+      
+      toast.success("Thanks for subscribing! Check your email for confirmation.");
+      setEmail("");
+    } catch (error: any) {
+      console.error('Newsletter subscription error:', error);
+      toast.error(error.message || "Failed to subscribe. Please try again.");
+    } finally {
+      setSubscribing(false);
+    }
+  };
+
   const footerSections = [
     {
       title: "For Job Seekers",
@@ -155,10 +197,16 @@ export default function Footer() {
             <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 w-full lg:w-auto">
               <Input
                 placeholder="Enter your email address"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 className="w-full sm:w-80 bg-background/50 border-border/50 focus:border-primary/50 h-11"
               />
-              <Button className="bg-gradient-primary hover:shadow-button btn-glow h-11 px-6 whitespace-nowrap">
-                Subscribe Now
+              <Button 
+                className="bg-gradient-primary hover:shadow-button btn-glow h-11 px-6 whitespace-nowrap"
+                onClick={handleSubscribe}
+                disabled={subscribing}
+              >
+                {subscribing ? "Subscribing..." : "Subscribe Now"}
               </Button>
             </div>
           </div>

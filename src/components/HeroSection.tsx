@@ -34,9 +34,12 @@ export default function HeroSection() {
   ];
 
   const handleSearch = () => {
-    if (searchQuery || location) {
-      navigate(`/find-jobs?search=${encodeURIComponent(searchQuery)}&location=${encodeURIComponent(location)}`);
-    }
+    const params = new URLSearchParams();
+    if (searchQuery) params.append('search', searchQuery);
+    if (location) params.append('location', location);
+    
+    const query = params.toString();
+    navigate(`/find-jobs${query ? '?' + query : ''}`);
   };
 
   const handleExplore = () => navigate('/find-jobs');

@@ -269,8 +269,7 @@ export default function Header() {
                     <Link to="/dashboard" className="block text-white/80">Account</Link>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator className="bg-white/10" />
-                  <DropdownMenuItem onClick={() => navigate("/dashboard#profile")} className="text-white hover:bg-white/10">My Profile</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate("/dashboard#settings")} className="text-white hover:bg-white/10">Settings</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/dashboard")} className="text-white hover:bg-white/10">My Profile & Settings</DropdownMenuItem>
                   <DropdownMenuItem onClick={onLogout} className="text-red-400 hover:bg-red-900/30">Logout</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>

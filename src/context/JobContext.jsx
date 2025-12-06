@@ -1,5 +1,16 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { mockJobs, mockCompanies, jobCategories } from '../data/mockData';
+import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
+import {
+  useSearchJobs,
+  useSaveJob,
+  useUnsaveJob,
+  useApplyToJob,
+  useMyApplications,
+  useJobById,
+  useMySavedJobs,
+  useApplicationById,
+  useScheduleInterview,
+  useMyInterviewsAsCandidate,
+} from '@/hooks/useJobApi';
 
 const JobContext = createContext();
 
@@ -12,238 +23,285 @@ export const useJobs = () => {
 };
 
 export const JobProvider = ({ children }) => {
-  const [jobs, setJobs] = useState(mockJobs);
-  const [companies, setCompanies] = useState(mockCompanies);
-  const [categories, setCategories] = useState(jobCategories);
-  const [savedJobs, setSavedJobs] = useState([]);
-  const [appliedJobs, setAppliedJobs] = useState([]);
+  // Search criteria state
+  const [searchCriteria, setSearchCriteria] = useState({
+    jobTitle: '',
+    location: '',
+    page: 0,
+    size: 20,
+  });
+
   const [filters, setFilters] = useState({
     search: '',
     location: '',
-    category: '',
     jobType: [],
-    experience: '',
     salaryRange: [0, 200000],
+    experience: '',
     postedDate: '',
-    remote: false
+    remote: false,
   });
-  const [sortBy, setSortBy] = useState('newest');
-  const [loading, setLoading] = useState(false);
 
-  // Load saved data from localStorage
-  useEffect(() => {
-    const savedJobIds = localStorage.getItem('jobhook_saved_jobs');
-    const appliedJobIds = localStorage.getItem('jobhook_applied_jobs');
-    
-    if (savedJobIds) {
-      setSavedJobs(JSON.parse(savedJobIds));
-    }
-    
-    if (appliedJobIds) {
-      setAppliedJobs(JSON.parse(appliedJobIds));
-    }
+  const [sortBy, setSortBy] = useState('newest');
+
+  // API queries
+  const { data: searchResults, isLoading: isSearching } = useSearchJobs(searchCriteria);
+  const { data: savedJobsList, isLoading: isLoadingSaved } = useMySavedJobs(searchCriteria.page, searchCriteria.size);
+  const { data: myApplications, isLoading: isLoadingApplications } = useMyApplications(searchCriteria.page, searchCriteria.size);
+  const { data: myInterviews, isLoading: isLoadingInterviews } = useMyInterviewsAsCandidate(searchCriteria.page, searchCriteria.size);
+
+  // API mutations
+  const { mutateAsync: saveJobAsync, isPending: isSaving } = useSaveJob();
+  const { mutateAsync: unsaveJobAsync, isPending: isUnsaving } = useUnsaveJob();
+  const { mutateAsync: applyAsync, isPending: isApplying } = useApplyToJob();
+  const { mutateAsync: scheduleAsync } = useScheduleInterview();
+
+  // Combine search results with applied status
+  const jobs = useMemo(() => {
+    if (!searchResults?.content) return [];
+
+    return searchResults.content.map(job => {
+      const application = myApplications?.content?.find(app => app.jobId === job.jobId);
+      return {
+        ...job,
+        applied: !!application,
+        applicationStatus: application?.applicationStatus || null,
+      };
+    });
+  }, [searchResults, myApplications]);
+
+  const updateFilters = useCallback((newFilters) => {
+    setFilters(prev => ({ ...prev, ...newFilters }));
+    // Reset to first page when filters change
+    setSearchCriteria(prev => ({ ...prev, page: 0 }));
   }, []);
 
-  // Filter and sort jobs based on current filters
-  const getFilteredJobs = () => {
-    let filteredJobs = [...jobs];
-
-    // Search filter
-    if (filters.search) {
-      const searchTerm = filters.search.toLowerCase();
-      filteredJobs = filteredJobs.filter(job =>
-        job.title.toLowerCase().includes(searchTerm) ||
-        job.company.toLowerCase().includes(searchTerm) ||
-        job.description.toLowerCase().includes(searchTerm) ||
-        job.skills.some(skill => skill.toLowerCase().includes(searchTerm))
-      );
-    }
-
-    // Location filter
-    if (filters.location) {
-      filteredJobs = filteredJobs.filter(job =>
-        job.location.toLowerCase().includes(filters.location.toLowerCase()) ||
-        (filters.location.toLowerCase() === 'remote' && job.remote)
-      );
-    }
-
-    // Category filter
-    if (filters.category) {
-      filteredJobs = filteredJobs.filter(job =>
-        job.category === filters.category
-      );
-    }
-
-    // Job type filter
-    if (filters.jobType.length > 0) {
-      filteredJobs = filteredJobs.filter(job =>
-        filters.jobType.includes(job.type)
-      );
-    }
-
-    // Experience filter
-    if (filters.experience) {
-      filteredJobs = filteredJobs.filter(job =>
-        job.experience === filters.experience
-      );
-    }
-
-    // Salary range filter
-    filteredJobs = filteredJobs.filter(job =>
-      job.salary.min >= filters.salaryRange[0] &&
-      job.salary.max <= filters.salaryRange[1]
-    );
-
-    // Posted date filter
-    if (filters.postedDate) {
-      const now = new Date();
-      const jobDate = new Date(job.postedDate);
-      const daysDiff = (now - jobDate) / (1000 * 60 * 60 * 24);
-
-      filteredJobs = filteredJobs.filter(job => {
-        const jobPostedDate = new Date(job.postedDate);
-        const daysSincePosted = (now - jobPostedDate) / (1000 * 60 * 60 * 24);
-
-        switch (filters.postedDate) {
-          case '24hours':
-            return daysSincePosted <= 1;
-          case 'week':
-            return daysSincePosted <= 7;
-          case 'month':
-            return daysSincePosted <= 30;
-          default:
-            return true;
-        }
-      });
-    }
-
-    // Remote filter
-    if (filters.remote) {
-      filteredJobs = filteredJobs.filter(job => job.remote);
-    }
-
-    // Sort jobs
-    switch (sortBy) {
-      case 'newest':
-        filteredJobs.sort((a, b) => new Date(b.postedDate) - new Date(a.postedDate));
-        break;
-      case 'salary-high':
-        filteredJobs.sort((a, b) => b.salary.max - a.salary.max);
-        break;
-      case 'salary-low':
-        filteredJobs.sort((a, b) => a.salary.min - b.salary.min);
-        break;
-      case 'relevance':
-        // For now, keep original order for relevance
-        break;
-      default:
-        break;
-    }
-
-    return filteredJobs;
-  };
-
-  const updateFilters = (newFilters) => {
-    setFilters(prev => ({ ...prev, ...newFilters }));
-  };
-
-  const clearFilters = () => {
+  const clearFilters = useCallback(() => {
     setFilters({
       search: '',
       location: '',
-      category: '',
       jobType: [],
-      experience: '',
       salaryRange: [0, 200000],
+      experience: '',
       postedDate: '',
-      remote: false
+      remote: false,
     });
-  };
-
-  const saveJob = (jobId) => {
-    const newSavedJobs = [...savedJobs];
-    const index = newSavedJobs.indexOf(jobId);
-    
-    if (index > -1) {
-      newSavedJobs.splice(index, 1);
-    } else {
-      newSavedJobs.push(jobId);
-    }
-    
-    setSavedJobs(newSavedJobs);
-    localStorage.setItem('jobhook_saved_jobs', JSON.stringify(newSavedJobs));
-  };
-
-  const applyToJob = (jobId, applicationData) => {
-    const application = {
-      jobId,
-      appliedDate: new Date().toISOString(),
-      status: 'pending',
-      ...applicationData
-    };
-    
-    const newAppliedJobs = [...appliedJobs, application];
-    setAppliedJobs(newAppliedJobs);
-    localStorage.setItem('jobhook_applied_jobs', JSON.stringify(newAppliedJobs));
-    
-    return application;
-  };
-
-  const getJobById = (id) => {
-    return jobs.find(job => job.id === parseInt(id));
-  };
-
-  const getCompanyById = (id) => {
-    return companies.find(company => company.id === parseInt(id));
-  };
-
-  const getSavedJobsDetails = () => {
-    return jobs.filter(job => savedJobs.includes(job.id));
-  };
-
-  const getAppliedJobsDetails = () => {
-    return appliedJobs.map(application => ({
-      ...application,
-      job: jobs.find(job => job.id === application.jobId)
+    setSearchCriteria(prev => ({
+      ...prev,
+      jobTitle: '',
+      location: '',
+      page: 0,
     }));
-  };
+  }, []);
 
-  const searchJobs = async (searchTerm) => {
-    setLoading(true);
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
-    const results = jobs.filter(job =>
-      job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      job.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      job.skills.some(skill => skill.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
-    
-    setLoading(false);
-    return results;
-  };
+  const searchJobs = useCallback((criteria) => {
+    setSearchCriteria(prev => ({
+      ...prev,
+      ...criteria,
+      page: 0,
+    }));
+  }, []);
 
-  const value = {
+  const saveJob = useCallback(async (jobId) => {
+    try {
+      await saveJobAsync(jobId);
+      // Refetch saved jobs to update UI
+      return true;
+    } catch (error) {
+      console.error('Failed to save job:', error);
+      throw error;
+    }
+  }, [saveJobAsync]);
+
+  const unsaveJob = useCallback(async (jobId) => {
+    try {
+      await unsaveJobAsync(jobId);
+      // Refetch saved jobs to update UI
+      return true;
+    } catch (error) {
+      console.error('Failed to unsave job:', error);
+      throw error;
+    }
+  }, [unsaveJobAsync]);
+
+  const applyToJob = useCallback(async (jobId, applicationData = {}) => {
+    try {
+      await applyAsync({
+        jobId,
+        coverLetter: applicationData.coverLetter || '',
+        resume: applicationData.resume || '',
+      });
+      // Refetch applications to update UI
+      return true;
+    } catch (error) {
+      console.error('Failed to apply to job:', error);
+      throw error;
+    }
+  }, [applyAsync]);
+
+  const getJobById = useCallback((jobId) => {
+    return jobs.find(job => job.jobId === jobId);
+  }, [jobs]);
+
+  const getCompanyById = useCallback((companyId) => {
+    // Companies are managed through ProfileContext or fetched separately
+    return null;
+  }, []);
+
+  const getSavedJobsDetails = useCallback(() => {
+    return savedJobsList?.content || [];
+  }, [savedJobsList]);
+
+  const getAppliedJobsDetails = useCallback(() => {
+    return myApplications?.content || [];
+  }, [myApplications]);
+
+  const goToNextPage = useCallback(() => {
+    setSearchCriteria(prev => ({
+      ...prev,
+      page: prev.page + 1,
+    }));
+  }, []);
+
+  const goToPreviousPage = useCallback(() => {
+    setSearchCriteria(prev => ({
+      ...prev,
+      page: Math.max(0, prev.page - 1),
+    }));
+  }, []);
+
+  const goToPage = useCallback((page) => {
+    setSearchCriteria(prev => ({
+      ...prev,
+      page,
+    }));
+  }, []);
+
+  const scheduleInterview = useCallback(async (applicationId, interviewData) => {
+    try {
+      await scheduleAsync({
+        applicationId,
+        ...interviewData,
+      });
+    } catch (error) {
+      console.error('Failed to schedule interview:', error);
+      throw error;
+    }
+  }, [scheduleAsync]);
+
+  const getFilteredJobs = useCallback(() => {
+    if (!searchResults?.content) return [];
+    
+    return searchResults.content.filter(job => {
+      // Apply local filters
+      if (filters.search && !job.title?.toLowerCase().includes(filters.search.toLowerCase()) && 
+          !job.description?.toLowerCase().includes(filters.search.toLowerCase())) {
+        return false;
+      }
+      
+      if (filters.location && !job.location?.toLowerCase().includes(filters.location.toLowerCase())) {
+        return false;
+      }
+      
+      if (filters.jobType?.length > 0 && !filters.jobType.includes(job.type)) {
+        return false;
+      }
+      
+      if (filters.salaryRange && job.salary) {
+        const [min, max] = filters.salaryRange;
+        if (job.salary < min || job.salary > max) {
+          return false;
+        }
+      }
+      
+      if (filters.experience && job.experience !== filters.experience) {
+        return false;
+      }
+      
+      if (filters.remote !== undefined && filters.remote !== job.remote) {
+        return false;
+      }
+      
+      return true;
+    });
+  }, [searchResults, filters]);
+
+  const value = useMemo(() => ({
+    // Data
     jobs,
-    companies,
-    categories,
-    savedJobs,
-    appliedJobs,
+    companies: [],
+    savedJobs: savedJobsList?.content || [],
+    appliedJobs: myApplications?.content || [],
+    interviews: myInterviews?.content || [],
     filters,
     sortBy,
-    loading,
-    getFilteredJobs,
+
+    // Pagination
+    currentPage: searchCriteria.page,
+    pageSize: searchCriteria.size,
+    totalJobs: searchResults?.totalElements || 0,
+    totalPages: searchResults?.totalPages || 0,
+    hasNextPage: searchResults && !searchResults.last,
+    hasPreviousPage: searchResults?.number > 0,
+
+    // Loading states
+    loading: isSearching || isSaving || isUnsaving || isApplying,
+    isSearching,
+    isLoadingSaved,
+    isLoadingApplications,
+    isLoadingInterviews,
+    isSaving,
+    isUnsaving,
+    isApplying,
+
+    // Methods
     updateFilters,
     clearFilters,
+    searchJobs,
     setSortBy,
     saveJob,
+    unsaveJob,
     applyToJob,
+    getFilteredJobs,
     getJobById,
     getCompanyById,
     getSavedJobsDetails,
     getAppliedJobsDetails,
-    searchJobs
-  };
+    goToNextPage,
+    goToPreviousPage,
+    goToPage,
+    scheduleInterview,
+  }), [
+    jobs,
+    savedJobsList,
+    myApplications,
+    myInterviews,
+    filters,
+    sortBy,
+    searchCriteria,
+    searchResults,
+    isSearching,
+    isLoadingSaved,
+    isLoadingApplications,
+    isLoadingInterviews,
+    isSaving,
+    isUnsaving,
+    isApplying,
+    updateFilters,
+    clearFilters,
+    searchJobs,
+    saveJob,
+    unsaveJob,
+    applyToJob,
+    getFilteredJobs,
+    getJobById,
+    getCompanyById,
+    getSavedJobsDetails,
+    getAppliedJobsDetails,
+    goToNextPage,
+    goToPreviousPage,
+    goToPage,
+    scheduleInterview,
+  ]);
 
   return (
     <JobContext.Provider value={value}>

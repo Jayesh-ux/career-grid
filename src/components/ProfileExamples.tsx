@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Gender, NoticePeriod } from '@/lib/profileApi';
+import { Gender, NoticePeriod } from '@/lib/api';
 
 // ============================================================================
 // Example 1: Create Profile Form
@@ -192,6 +192,7 @@ export const AddWorkExperienceForm: React.FC<{ onSuccess?: () => void }> = ({ on
     try {
       await addWorkExperience({
         ...formData,
+        employmentType: formData.employmentType as any,
         salary: formData.salary ? Number(formData.salary) : undefined,
       });
       setFormData({
@@ -357,12 +358,12 @@ export const SkillsManager: React.FC = () => {
           <div className="flex flex-wrap gap-2">
             {skills.map((skill) => (
               <div
-                key={skill.id}
+                key={skill.id ?? skill.skillId}
                 className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full flex items-center gap-2"
               >
-                <span>{skill.skillName}</span>
+                <span>{skill.skill?.skillName ?? `Skill ${skill.skillId ?? skill.id ?? ''}`}</span>
                 <button
-                  onClick={() => removeSkill(skill.skillId)}
+                  onClick={() => removeSkill(skill.skillId ?? skill.id ?? 0)}
                   disabled={loading}
                   className="text-blue-600 hover:text-blue-800 font-bold"
                 >
