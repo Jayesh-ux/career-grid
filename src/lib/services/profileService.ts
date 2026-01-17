@@ -1,439 +1,592 @@
-import { profileServiceClient, handleApiError } from '@/lib/apiClient';
-import {
-  JobseekerProfileResponse,
-  EmployerProfileResponse,
-  CreateJobseekerProfileRequest,
-  UpdateJobseekerProfileRequest,
-  CreateEmployerProfileRequest,
-  UpdateEmployerProfileRequest,
-  SkillResponse,
-  JobseekerSkillResponse,
-  AddSkillRequest,
-  WorkExperienceResponse,
-  AddWorkExperienceRequest,
-  UpdateWorkExperienceRequest,
-  EducationResponse,
-  AddEducationRequest,
-  UpdateEducationRequest,
-  CompanyResponse,
-  CreateCompanyRequest,
-  UpdateCompanyRequest,
-  CompanyReviewResponse,
-  CreateCompanyReviewRequest,
-} from '@/api/types/profile';
+import { profileApi } from '../apiClient';
 
-export const profileService = {
-  // Jobseeker Profile
-  createJobseekerProfile: async (data: CreateJobseekerProfileRequest) => {
-    try {
-      const response = await profileServiceClient.post('/profiles/jobseeker', data);
-      return response.data as JobseekerProfileResponse;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+// ============================================
+// JOBSEEKER PROFILE
+// ============================================
 
-  getMyJobseekerProfile: async () => {
-    try {
-      const response = await profileServiceClient.get('/profiles/jobseeker/me');
-      return response.data as JobseekerProfileResponse;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export interface CreateJobseekerProfileRequest {
+  firstName: string;
+  lastName: string;
+  dateOfBirth?: string;
+  gender?: 'MALE' | 'FEMALE' | 'OTHER';
+  currentLocation?: string;
+  preferredLocation?: string;
+  bio?: string;
+  totalExperienceMonths?: number;
+  currentSalary?: number;
+  expectedSalary?: number;
+  noticePeriod?: 'IMMEDIATE' | 'DAYS15' | 'MONTH1' | 'MONTH2' | 'MONTH3';
+}
 
-  getJobseekerProfile: async (profileId: number) => {
-    try {
-      const response = await profileServiceClient.get(`/profiles/jobseeker/${profileId}`);
-      return response.data as JobseekerProfileResponse;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export interface JobseekerProfileResponse {
+  profileId: number;
+  userId: number;
+  firstName: string;
+  lastName: string;
+  dateOfBirth: string;
+  gender: string;
+  currentLocation: string;
+  preferredLocation: string;
+  bio: string;
+  totalExperienceMonths: number;
+  currentSalary: number;
+  expectedSalary: number;
+  noticePeriod: string;
+  isProfileComplete: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
 
-  updateJobseekerProfile: async (data: UpdateJobseekerProfileRequest) => {
-    try {
-      const response = await profileServiceClient.put('/profiles/jobseeker/me', data);
-      return response.data as JobseekerProfileResponse;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export interface ProfileCompletionResponse {
+  completionPercentage: number;
+}
 
-  deleteJobseekerProfile: async () => {
-    try {
-      const response = await profileServiceClient.delete('/profiles/jobseeker/me');
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export interface ProfileSummaryResponse {
+  profile: JobseekerProfileResponse;
+  skills: SkillResponse[];
+  education: EducationResponse[];
+  experience: WorkExperienceResponse[];
+  completionPercentage: number;
+}
 
-  jobseekerProfileExists: async () => {
-    try {
-      const response = await profileServiceClient.get('/profiles/jobseeker/exists');
-      return response.data as { hasProfile: boolean };
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+// Create jobseeker profile
+export const createJobseekerProfile = async (
+  data: CreateJobseekerProfileRequest
+): Promise<JobseekerProfileResponse> => {
+  const response = await profileApi.post<JobseekerProfileResponse>(
+    '/api/v1/profiles/jobseeker',
+    data
+  );
+  return response.data;
+};
 
-  getProfileCompletion: async () => {
-    try {
-      const response = await profileServiceClient.get('/profiles/jobseeker/me/completion');
-      return response.data as { completionPercentage: number };
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+// Get my jobseeker profile
+export const getMyJobseekerProfile = async (): Promise<JobseekerProfileResponse> => {
+  const response = await profileApi.get<JobseekerProfileResponse>(
+    '/api/v1/profiles/jobseeker/me'
+  );
+  return response.data;
+};
 
-  getProfileSummary: async () => {
-    try {
-      const response = await profileServiceClient.get('/profiles/jobseeker/me/summary');
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+// Get jobseeker profile by ID (public viewing)
+export const getJobseekerProfileById = async (
+  profileId: number
+): Promise<JobseekerProfileResponse> => {
+  const response = await profileApi.get<JobseekerProfileResponse>(
+    `/api/v1/profiles/jobseeker/${profileId}`
+  );
+  return response.data;
+};
 
-  // Employer Profile
-  createEmployerProfile: async (data: CreateEmployerProfileRequest) => {
-    try {
-      const response = await profileServiceClient.post('/profiles/employer', data);
-      return response.data as EmployerProfileResponse;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+// Update my jobseeker profile
+export const updateMyJobseekerProfile = async (
+  data: Partial<CreateJobseekerProfileRequest>
+): Promise<JobseekerProfileResponse> => {
+  const response = await profileApi.put<JobseekerProfileResponse>(
+    '/api/v1/profiles/jobseeker/me',
+    data
+  );
+  return response.data;
+};
 
-  getMyEmployerProfile: async () => {
-    try {
-      const response = await profileServiceClient.get('/profiles/employer/me');
-      return response.data as EmployerProfileResponse;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+// Delete my jobseeker profile
+export const deleteMyJobseekerProfile = async (): Promise<void> => {
+  await profileApi.delete('/api/v1/profiles/jobseeker/me');
+};
 
-  getEmployerProfile: async (employerId: number) => {
-    try {
-      const response = await profileServiceClient.get(`/profiles/employer/${employerId}`);
-      return response.data as EmployerProfileResponse;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+// Check if jobseeker profile exists
+export const checkJobseekerProfileExists = async (): Promise<boolean> => {
+  const response = await profileApi.get<boolean>('/api/v1/profiles/jobseeker/exists');
+  return response.data;
+};
 
-  updateEmployerProfile: async (data: UpdateEmployerProfileRequest) => {
-    try {
-      const response = await profileServiceClient.put('/profiles/employer/me', data);
-      return response.data as EmployerProfileResponse;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+// Get profile completion percentage
+export const getJobseekerCompletion = async (): Promise<ProfileCompletionResponse> => {
+  const response = await profileApi.get<ProfileCompletionResponse>(
+    '/api/v1/profiles/jobseeker/me/completion'
+  );
+  return response.data;
+};
 
-  deleteEmployerProfile: async () => {
-    try {
-      const response = await profileServiceClient.delete('/profiles/employer/me');
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+// Get complete profile summary
+export const getJobseekerSummary = async (): Promise<ProfileSummaryResponse> => {
+  const response = await profileApi.get<ProfileSummaryResponse>(
+    '/api/v1/profiles/jobseeker/me/summary'
+  );
+  return response.data;
+};
 
-  employerProfileExists: async () => {
-    try {
-      const response = await profileServiceClient.get('/profiles/employer/exists');
-      return response.data as boolean;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+// ============================================
+// EMPLOYER PROFILE
+// ============================================
 
-  // Skills
-  getAllSkills: async () => {
-    try {
-      const response = await profileServiceClient.get('/profiles/jobseeker/skills/catalog');
-      return response.data as SkillResponse[];
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export interface CreateEmployerProfileRequest {
+  companyName: string;
+  companyWebsite?: string;
+  companyDescription?: string;
+  industry?: string;
+  companySize?: 'SIZE1_10' | 'SIZE11_50' | 'SIZE51_200' | 'SIZE201_500' | 'SIZE500PLUS';
+  headquartersLocation?: string;
+  contactPersonName?: string;
+  contactPersonDesignation?: string;
+}
 
-  getSkillById: async (skillId: number) => {
-    try {
-      const response = await profileServiceClient.get(`/profiles/jobseeker/skills/catalog/${skillId}`);
-      return response.data as SkillResponse;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export interface EmployerProfileResponse {
+  employerId: number;
+  userId: number;
+  companyName: string;
+  companyWebsite: string;
+  companyDescription: string;
+  industry: string;
+  companySize: string;
+  headquartersLocation: string;
+  contactPersonName: string;
+  contactPersonDesignation: string;
+  isVerified: boolean;
+  rating: number;
+  totalReviews: number;
+  createdAt: string;
+}
 
-  getMySkills: async () => {
-    try {
-      const response = await profileServiceClient.get('/profiles/jobseeker/skills');
-      return response.data as JobseekerSkillResponse[];
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+// Create employer profile
+export const createEmployerProfile = async (
+  data: CreateEmployerProfileRequest
+): Promise<EmployerProfileResponse> => {
+  const response = await profileApi.post<EmployerProfileResponse>(
+    '/api/v1/profiles/employer',
+    data
+  );
+  return response.data;
+};
 
-  addSkill: async (data: AddSkillRequest) => {
-    try {
-      const response = await profileServiceClient.post('/profiles/jobseeker/skills', data);
-      return response.data as JobseekerSkillResponse;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+// Get my employer profile
+export const getMyEmployerProfile = async (): Promise<EmployerProfileResponse> => {
+  const response = await profileApi.get<EmployerProfileResponse>(
+    '/api/v1/profiles/employer/me'
+  );
+  return response.data;
+};
 
-  removeSkill: async (skillId: number) => {
-    try {
-      const response = await profileServiceClient.delete(`/profiles/jobseeker/skills/${skillId}`);
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+// Get employer profile by ID
+export const getEmployerProfileById = async (
+  employerId: number
+): Promise<EmployerProfileResponse> => {
+  const response = await profileApi.get<EmployerProfileResponse>(
+    `/api/v1/profiles/employer/${employerId}`
+  );
+  return response.data;
+};
 
-  // Work Experience
-  getMyWorkExperience: async () => {
-    try {
-      const response = await profileServiceClient.get('/profiles/jobseeker/experience');
-      return response.data as WorkExperienceResponse[];
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+// Update my employer profile
+export const updateMyEmployerProfile = async (
+  data: Partial<CreateEmployerProfileRequest>
+): Promise<EmployerProfileResponse> => {
+  const response = await profileApi.put<EmployerProfileResponse>(
+    '/api/v1/profiles/employer/me',
+    data
+  );
+  return response.data;
+};
 
-  addWorkExperience: async (data: AddWorkExperienceRequest) => {
-    try {
-      const response = await profileServiceClient.post('/profiles/jobseeker/experience', data);
-      return response.data as WorkExperienceResponse;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+// Delete my employer profile
+export const deleteMyEmployerProfile = async (): Promise<void> => {
+  await profileApi.delete('/api/v1/profiles/employer/me');
+};
 
-  updateWorkExperience: async (experienceId: number, data: UpdateWorkExperienceRequest) => {
-    try {
-      const response = await profileServiceClient.put(
-        `/profiles/jobseeker/experience/${experienceId}`,
-        data
-      );
-      return response.data as WorkExperienceResponse;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+// Check if employer profile exists
+export const checkEmployerProfileExists = async (): Promise<boolean> => {
+  const response = await profileApi.get<boolean>('/api/v1/profiles/employer/exists');
+  return response.data;
+};
 
-  deleteWorkExperience: async (experienceId: number) => {
-    try {
-      const response = await profileServiceClient.delete(`/profiles/jobseeker/experience/${experienceId}`);
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+// ============================================
+// SKILLS
+// ============================================
 
-  // Education
-  getMyEducation: async () => {
-    try {
-      const response = await profileServiceClient.get('/profiles/jobseeker/education');
-      return response.data as EducationResponse[];
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export interface SkillResponse {
+  id: number;
+  profileId: number;
+  skillId: number;
+  skillName: string;
+  proficiencyLevel: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT';
+  yearsOfExperience: number;
+}
 
-  addEducation: async (data: AddEducationRequest) => {
-    try {
-      const response = await profileServiceClient.post('/profiles/jobseeker/education', data);
-      return response.data as EducationResponse;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export interface CreateSkillRequest {
+  skillId: number;
+  proficiencyLevel: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT';
+  yearsOfExperience: number;
+}
 
-  updateEducation: async (educationId: number, data: UpdateEducationRequest) => {
-    try {
-      const response = await profileServiceClient.put(
-        `/profiles/jobseeker/education/${educationId}`,
-        data
-      );
-      return response.data as EducationResponse;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export interface MasterSkill {
+  skillId: number;
+  skillName: string;
+  category: string;
+  description: string;
+  isActive: boolean;
+}
 
-  deleteEducation: async (educationId: number) => {
-    try {
-      const response = await profileServiceClient.delete(`/profiles/jobseeker/education/${educationId}`);
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+// Get all master skills
+export const getAllSkills = async (page = 0, size = 50): Promise<MasterSkill[]> => {
+  const response = await profileApi.get<MasterSkill[]>(
+    `/api/v1/skills?page=${page}&size=${size}`
+  );
+  return response.data;
+};
 
-  // Companies
-  getAllCompanies: async (page: number = 0, size: number = 10) => {
-    try {
-      const response = await profileServiceClient.get('/companies', {
-        params: { page, size },
-      });
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+// Search skills by name
+export const searchSkills = async (name: string): Promise<MasterSkill[]> => {
+  const response = await profileApi.get<MasterSkill[]>(
+    `/api/v1/skills/search?name=${name}`
+  );
+  return response.data;
+};
 
-  getCompanyById: async (companyId: number) => {
-    try {
-      const response = await profileServiceClient.get(`/api/v1/companies/${companyId}`);
-      return response.data as CompanyResponse;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+// Add skill to profile
+export const addSkillToProfile = async (
+  data: CreateSkillRequest
+): Promise<SkillResponse> => {
+  const response = await profileApi.post<SkillResponse>(
+    '/api/v1/profiles/jobseeker/skills',
+    data
+  );
+  return response.data;
+};
 
-  searchCompanies: async (name: string) => {
-    try {
-      const response = await profileServiceClient.get('/api/v1/companies/search', {
-        params: { name },
-      });
-      return response.data as CompanyResponse[];
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+// Get my skills
+export const getMySkills = async (): Promise<SkillResponse[]> => {
+  const response = await profileApi.get<SkillResponse[]>(
+    '/api/v1/profiles/jobseeker/skills'
+  );
+  return response.data;
+};
 
-  createCompany: async (data: CreateCompanyRequest) => {
-    try {
-      const response = await profileServiceClient.post('/api/v1/companies', data);
-      return response.data as CompanyResponse;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+// Update skill
+export const updateSkill = async (
+  id: number,
+  data: Partial<CreateSkillRequest>
+): Promise<SkillResponse> => {
+  const response = await profileApi.put<SkillResponse>(
+    `/api/v1/profiles/jobseeker/skills/${id}`,
+    data
+  );
+  return response.data;
+};
 
-  updateCompany: async (companyId: number, data: UpdateCompanyRequest) => {
-    try {
-      const response = await profileServiceClient.put(`/api/v1/companies/${companyId}`, data);
-      return response.data as CompanyResponse;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+// Delete skill
+export const deleteSkill = async (id: number): Promise<void> => {
+  await profileApi.delete(`/api/v1/profiles/jobseeker/skills/${id}`);
+};
 
-  deleteCompany: async (companyId: number) => {
-    try {
-      const response = await profileServiceClient.delete(`/api/v1/companies/${companyId}`);
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+// ============================================
+// EDUCATION
+// ============================================
 
-  getMyCompanies: async () => {
-    try {
-      const response = await profileServiceClient.get('/api/v1/companies/my-companies');
-      return response.data as CompanyResponse[];
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export interface EducationResponse {
+  educationId: number;
+  profileId: number;
+  degree: string;
+  fieldOfStudy: string;
+  institutionName: string;
+  university: string;
+  startDate: string;
+  endDate: string;
+  percentageOrCgpa: number;
+  description: string;
+  isCurrent: boolean;
+}
 
-  // Company Reviews
-  getCompanyReviews: async (companyId: number, onlyApproved: boolean = true) => {
-    try {
-      const response = await profileServiceClient.get(`/api/v1/companies/${companyId}/reviews`, {
-        params: { onlyApproved },
-      });
-      return response.data as CompanyReviewResponse[];
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export interface CreateEducationRequest {
+  degree: string;
+  fieldOfStudy: string;
+  institutionName: string;
+  university: string;
+  startDate: string;
+  endDate?: string;
+  percentageOrCgpa?: number;
+  description?: string;
+  isCurrent: boolean;
+}
 
-  submitReview: async (companyId: number, data: CreateCompanyReviewRequest) => {
-    try {
-      const response = await profileServiceClient.post(
-        `/api/v1/companies/${companyId}/reviews`,
-        data
-      );
-      return response.data as CompanyReviewResponse;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+// Add education
+export const addEducation = async (
+  data: CreateEducationRequest
+): Promise<EducationResponse> => {
+  const response = await profileApi.post<EducationResponse>(
+    '/api/v1/profiles/jobseeker/education',
+    data
+  );
+  return response.data;
+};
 
-  updateReview: async (reviewId: number, data: CreateCompanyReviewRequest) => {
-    try {
-      const response = await profileServiceClient.put(`/api/v1/companies/reviews/${reviewId}`, data);
-      return response.data as CompanyReviewResponse;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+// Get my education
+export const getMyEducation = async (): Promise<EducationResponse[]> => {
+  const response = await profileApi.get<EducationResponse[]>(
+    '/api/v1/profiles/jobseeker/education'
+  );
+  return response.data;
+};
 
-  deleteReview: async (reviewId: number) => {
-    try {
-      const response = await profileServiceClient.delete(`/api/v1/companies/reviews/${reviewId}`);
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+// Update education
+export const updateEducation = async (
+  educationId: number,
+  data: Partial<CreateEducationRequest>
+): Promise<EducationResponse> => {
+  const response = await profileApi.put<EducationResponse>(
+    `/api/v1/profiles/jobseeker/education/${educationId}`,
+    data
+  );
+  return response.data;
+};
 
-  getMyReviews: async () => {
-    try {
-      const response = await profileServiceClient.get('/api/v1/companies/reviews/my-reviews');
-      return response.data as CompanyReviewResponse[];
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+// Delete education
+export const deleteEducation = async (educationId: number): Promise<void> => {
+  await profileApi.delete(`/api/v1/profiles/jobseeker/education/${educationId}`);
+};
 
-  approveReview: async (reviewId: number) => {
-    try {
-      const response = await profileServiceClient.patch(
-        `/api/v1/companies/reviews/${reviewId}/approve`
-      );
-      return response.data as CompanyReviewResponse;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+// ============================================
+// WORK EXPERIENCE
+// ============================================
 
-  rejectReview: async (reviewId: number) => {
-    try {
-      const response = await profileServiceClient.patch(
-        `/api/v1/companies/reviews/${reviewId}/reject`
-      );
-      return response.data as CompanyReviewResponse;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export interface WorkExperienceResponse {
+  experienceId: number;
+  profileId: number;
+  companyName: string;
+  jobTitle: string;
+  employmentType: 'FULLTIME' | 'PARTTIME' | 'CONTRACT' | 'INTERNSHIP' | 'FREELANCE';
+  startDate: string;
+  endDate: string;
+  isCurrent: boolean;
+  jobDescription: string;
+  location: string;
+  salary: number;
+}
 
-  // Health Check
-  healthCheck: async () => {
-    try {
-      const response = await profileServiceClient.get('/health');
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export interface CreateWorkExperienceRequest {
+  companyName: string;
+  jobTitle: string;
+  employmentType: 'FULLTIME' | 'PARTTIME' | 'CONTRACT' | 'INTERNSHIP' | 'FREELANCE';
+  startDate: string;
+  endDate?: string;
+  isCurrent: boolean;
+  jobDescription?: string;
+  location?: string;
+  salary?: number;
+}
 
-  readinessCheck: async () => {
-    try {
-      const response = await profileServiceClient.get('/health/ready');
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+// Add work experience
+export const addWorkExperience = async (
+  data: CreateWorkExperienceRequest
+): Promise<WorkExperienceResponse> => {
+  const response = await profileApi.post<WorkExperienceResponse>(
+    '/api/v1/profiles/jobseeker/work-experience',
+    data
+  );
+  return response.data;
+};
+
+// Get my work experience
+export const getMyWorkExperience = async (): Promise<WorkExperienceResponse[]> => {
+  const response = await profileApi.get<WorkExperienceResponse[]>(
+    '/api/v1/profiles/jobseeker/work-experience'
+  );
+  return response.data;
+};
+
+// Update work experience
+export const updateWorkExperience = async (
+  experienceId: number,
+  data: Partial<CreateWorkExperienceRequest>
+): Promise<WorkExperienceResponse> => {
+  const response = await profileApi.put<WorkExperienceResponse>(
+    `/api/v1/profiles/jobseeker/work-experience/${experienceId}`,
+    data
+  );
+  return response.data;
+};
+
+// Delete work experience
+export const deleteWorkExperience = async (experienceId: number): Promise<void> => {
+  await profileApi.delete(`/api/v1/profiles/jobseeker/work-experience/${experienceId}`);
+};
+
+// ============================================
+// COMPANIES
+// ============================================
+
+export interface CompanyResponse {
+  companyId: number;
+  adminUserId: number;
+  companyName: string;
+  website: string;
+  description: string;
+  industry: string;
+  size: string;
+  headquarters: string;
+  foundedYear: number;
+  employeeCount: number;
+  rating: number;
+  reviewCount: number;
+  isVerified: boolean;
+  createdAt: string;
+}
+
+export interface CreateCompanyRequest {
+  companyName: string;
+  website?: string;
+  description?: string;
+  industry?: string;
+  size?: string;
+  headquarters?: string;
+  foundedYear?: number;
+  employeeCount?: number;
+}
+
+// Create company
+export const createCompany = async (
+  data: CreateCompanyRequest
+): Promise<CompanyResponse> => {
+  const response = await profileApi.post<CompanyResponse>('/api/v1/companies', data);
+  return response.data;
+};
+
+// Get company by ID
+export const getCompanyById = async (companyId: number): Promise<CompanyResponse> => {
+  const response = await profileApi.get<CompanyResponse>(`/api/v1/companies/${companyId}`);
+  return response.data;
+};
+
+// Get all companies
+export const getAllCompanies = async (
+  page = 0,
+  size = 10
+): Promise<CompanyResponse[]> => {
+  const response = await profileApi.get<CompanyResponse[]>(
+    `/api/v1/companies?page=${page}&size=${size}`
+  );
+  return response.data;
+};
+
+// Search companies
+export const searchCompanies = async (name: string): Promise<CompanyResponse[]> => {
+  const response = await profileApi.get<CompanyResponse[]>(
+    `/api/v1/companies/search?name=${name}`
+  );
+  return response.data;
+};
+
+// Get my companies
+export const getMyCompanies = async (): Promise<CompanyResponse[]> => {
+  const response = await profileApi.get<CompanyResponse[]>('/api/v1/companies/my-companies');
+  return response.data;
+};
+
+// Update company
+export const updateCompany = async (
+  companyId: number,
+  data: Partial<CreateCompanyRequest>
+): Promise<CompanyResponse> => {
+  const response = await profileApi.put<CompanyResponse>(
+    `/api/v1/companies/${companyId}`,
+    data
+  );
+  return response.data;
+};
+
+// Delete company
+export const deleteCompany = async (companyId: number): Promise<void> => {
+  await profileApi.delete(`/api/v1/companies/${companyId}`);
+};
+
+// ============================================
+// COMPANY REVIEWS
+// ============================================
+
+export interface CompanyReviewResponse {
+  reviewId: number;
+  companyId: number;
+  profileId: number;
+  overallRating: number;
+  workLifeBalance: number;
+  salaryBenefits: number;
+  careerGrowth: number;
+  management: number;
+  culture: number;
+  reviewTitle: string;
+  pros: string;
+  cons: string;
+  adviceToManagement: string;
+  jobTitle: string;
+  employmentStatus: string;
+  location: string;
+  isCurrentEmployee: boolean;
+  isAnonymous: boolean;
+  isApproved: boolean;
+  createdAt: string;
+}
+
+export interface CreateReviewRequest {
+  overallRating: number;
+  workLifeBalance: number;
+  salaryBenefits: number;
+  careerGrowth: number;
+  management: number;
+  culture: number;
+  reviewTitle: string;
+  pros: string;
+  cons: string;
+  adviceToManagement?: string;
+  jobTitle: string;
+  employmentStatus: string;
+  location: string;
+  isCurrentEmployee: boolean;
+  isAnonymous: boolean;
+}
+
+// Submit review
+export const submitCompanyReview = async (
+  companyId: number,
+  data: CreateReviewRequest
+): Promise<CompanyReviewResponse> => {
+  const response = await profileApi.post<CompanyReviewResponse>(
+    `/api/v1/companies/${companyId}/reviews`,
+    data
+  );
+  return response.data;
+};
+
+// Get company reviews
+export const getCompanyReviews = async (
+  companyId: number,
+  onlyApproved = true
+): Promise<CompanyReviewResponse[]> => {
+  const response = await profileApi.get<CompanyReviewResponse[]>(
+    `/api/v1/companies/${companyId}/reviews?onlyApproved=${onlyApproved}`
+  );
+  return response.data;
+};
+
+// Get my reviews
+export const getMyReviews = async (): Promise<CompanyReviewResponse[]> => {
+  const response = await profileApi.get<CompanyReviewResponse[]>(
+    '/api/v1/companies/reviews/my-reviews'
+  );
+  return response.data;
+};
+
+// Update review
+export const updateReview = async (
+  reviewId: number,
+  data: Partial<CreateReviewRequest>
+): Promise<CompanyReviewResponse> => {
+  const response = await profileApi.put<CompanyReviewResponse>(
+    `/api/v1/companies/reviews/${reviewId}`,
+    data
+  );
+  return response.data;
+};
+
+// Delete review
+export const deleteReview = async (reviewId: number): Promise<void> => {
+  await profileApi.delete(`/api/v1/companies/reviews/${reviewId}`);
 };

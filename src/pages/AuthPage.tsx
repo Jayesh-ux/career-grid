@@ -1,577 +1,358 @@
-import React, { useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
-import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import  OtpModal  from '@/components/auth/OtpModal';
+import { ForgotPasswordModal } from '@/components/auth/ForgotPasswordModal';
+import { showToast } from '@/components/Toast';
+import { Briefcase, User, Mail, Lock, Phone, Loader2 } from 'lucide-react';
+
+type UserType = 'JOBSEEKER' | 'EMPLOYER';
+
+interface LocationState {
+  from?: { pathname: string };
+}
 
 export default function AuthPage() {
   const navigate = useNavigate();
-  const { toast } = useToast();
-  const [searchParams] = useSearchParams();
-  const {
-    register,
-    verifyRegistrationOtp,
-    login,
-    verifyLoginOtp,
-    resendOtp,
-    loading,
-    token,
-  } = useAuth();
+  const location = useLocation();
+  const { initiateLogin, initiateRegister, verifyOtp, isLoading } = useAuth();
 
-  // Determine which tab to show
-  const defaultTab = searchParams.get('tab') || 'login';
+  // Form states
+  const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
 
-  // Login flow
-  const [loginStep, setLoginStep] = useState('credentials'); // 'credentials' or 'otp'
-  const [loginPhone, setLoginPhone] = useState('');
+  // Login form
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
-  const [loginOtp, setLoginOtp] = useState('');
-  const [loginLoading, setLoginLoading] = useState(false);
-  const [loginError, setLoginError] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
 
-  // Register flow
-  const [registerStep, setRegisterStep] = useState('details'); // 'details' or 'otp'
+  // Register form
+  const [registerName, setRegisterName] = useState('');
   const [registerEmail, setRegisterEmail] = useState('');
   const [registerPassword, setRegisterPassword] = useState('');
+  const [registerConfirmPassword, setRegisterConfirmPassword] = useState('');
   const [registerPhone, setRegisterPhone] = useState('');
-  const [registerName, setRegisterName] = useState('');
-  const [registerUserType, setRegisterUserType] = useState('jobseeker');
-  const [registerOtp, setRegisterOtp] = useState('');
-  const [registerLoading, setRegisterLoading] = useState(false);
-  const [registerError, setRegisterError] = useState('');
-  const [showRegisterPassword, setShowRegisterPassword] = useState(false);
+  const [registerUserType, setRegisterUserType] = useState<UserType>('JOBSEEKER');
 
-  // Redirect if already logged in
-  React.useEffect(() => {
-    if (token) {
-      navigate('/dashboard');
-    }
-  }, [token, navigate]);
+  // OTP Modal states
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [otpPhone, setOtpPhone] = useState('');
+  const [otpPurpose, setOtpPurpose] = useState<'login' | 'registration'>('login');
 
-  // LOGIN HANDLERS
-  const handleLoginSubmit = async (e) => {
+  // Forgot Password Modal
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+
+  // Get redirect path
+  const from = (location.state as LocationState)?.from?.pathname || '/dashboard';
+
+  // Handle successful authentication
+  const handleAuthSuccess = () => {
+    setShowOtpModal(false);
+    showToast.success('Authentication successful!');
+    navigate(from, { replace: true });
+  };
+
+  // Login handler
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoginError('');
 
     if (!loginEmail || !loginPassword) {
-      setLoginError('Please enter email and password');
+      showToast.error('Please fill in all fields');
       return;
     }
 
     try {
-      setLoginLoading(true);
-      await login({ email: loginEmail, password: loginPassword });
-      // API returns OTP is needed
-      setLoginPhone(''); // Will be filled from API response if available
-      setLoginStep('otp');
-      toast({
-        title: 'OTP Sent',
-        description: 'Check your phone for the OTP code',
-      });
-    } catch (error) {
-      setLoginError(error?.message || 'Login failed. Please try again.');
-      toast({
-        title: 'Login Failed',
-        description: error?.message || 'Invalid credentials',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoginLoading(false);
+      const phone = await initiateLogin(loginEmail, loginPassword);
+      setOtpPhone(phone);
+      setOtpPurpose('login');
+      setShowOtpModal(true);
+      showToast.success('OTP sent to your registered phone');
+    } catch (error: any) {
+      showToast.error(error.response?.data?.message || 'Login failed');
     }
   };
 
-  const handleLoginOtpSubmit = async (e) => {
+  // Register handler
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoginError('');
 
-    if (!loginOtp) {
-      setLoginError('Please enter OTP');
-      return;
-    }
-    
-    if (!loginPhone && !loginEmail) {
-      setLoginError('Phone number or email required');
+    // Validation
+    if (!registerName || !registerEmail || !registerPassword || !registerPhone) {
+      showToast.error('Please fill in all fields');
       return;
     }
 
-    try {
-      setLoginLoading(true);
-      await verifyLoginOtp({ phone: loginPhone, otp: loginOtp });
-      toast({
-        title: 'Success',
-        description: 'Logged in successfully',
-      });
-      navigate('/dashboard');
-    } catch (error) {
-      setLoginError(error?.message || 'OTP verification failed');
-      toast({
-        title: 'Verification Failed',
-        description: error?.message || 'Invalid OTP',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoginLoading(false);
+    if (registerPassword !== registerConfirmPassword) {
+      showToast.error('Passwords do not match');
+      return;
     }
-  };
 
-  const handleLoginResendOtp = async () => {
-    if (!loginPhone) {
-      setLoginError('Phone number not found');
+    if (registerPassword.length < 8) {
+      showToast.error('Password must be at least 8 characters');
+      return;
+    }
+
+    // Validate Indian phone number (10 digits)
+    const phoneRegex = /^[6-9]\d{9}$/;
+    if (!phoneRegex.test(registerPhone)) {
+      showToast.error('Please enter a valid 10-digit Indian mobile number');
       return;
     }
 
     try {
-      setLoginLoading(true);
-      await resendOtp({ phone: loginPhone, purpose: 'login' });
-      toast({
-        title: 'OTP Resent',
-        description: 'Check your phone for the new OTP code',
-      });
-    } catch (error) {
-      setLoginError(error?.message || 'Failed to resend OTP');
-    } finally {
-      setLoginLoading(false);
-    }
-  };
-
-  // REGISTER HANDLERS
-  const handleRegisterSubmit = async (e) => {
-    e.preventDefault();
-    setRegisterError('');
-
-    if (!registerEmail || !registerPassword || !registerPhone || !registerName) {
-      setRegisterError('Please fill in all required fields');
-      return;
-    }
-
-    if (registerPassword.length < 6) {
-      setRegisterError('Password must be at least 6 characters');
-      return;
-    }
-
-    try {
-      setRegisterLoading(true);
-      await register({
+      await initiateRegister({
+        name: registerName,
         email: registerEmail,
         password: registerPassword,
         phone: registerPhone,
         userType: registerUserType,
-        name: registerName,
       });
-      setRegisterStep('otp');
-      toast({
-        title: 'Registration Initiated',
-        description: 'Check your phone for the OTP code',
-      });
-    } catch (error) {
-      setRegisterError(error?.message || 'Registration failed');
-      toast({
-        title: 'Registration Failed',
-        description: error?.message || 'Please try again',
-        variant: 'destructive',
-      });
-    } finally {
-      setRegisterLoading(false);
+      setOtpPhone(registerPhone);
+      setOtpPurpose('registration');
+      setShowOtpModal(true);
+      showToast.success('OTP sent to your phone. Please verify to complete registration.');
+    } catch (error: any) {
+      showToast.error(error.response?.data?.message || 'Registration failed');
     }
   };
 
-  const handleRegisterOtpSubmit = async (e) => {
-    e.preventDefault();
-    setRegisterError('');
-
-    if (!registerOtp) {
-      setRegisterError('Please enter OTP');
-      return;
-    }
-
+  // OTP verification handler
+  const handleVerifyOtp = async (otp: string) => {
     try {
-      setRegisterLoading(true);
-      await verifyRegistrationOtp({ phone: registerPhone, otp: registerOtp });
-      toast({
-        title: 'Success',
-        description: 'Account created successfully',
-      });
-      navigate(registerUserType === 'jobseeker' ? '/profile-setup' : '/employer-dashboard');
-    } catch (error) {
-      setRegisterError(error?.message || 'OTP verification failed');
-      toast({
-        title: 'Verification Failed',
-        description: error?.message || 'Invalid OTP',
-        variant: 'destructive',
-      });
-    } finally {
-      setRegisterLoading(false);
-    }
-  };
-
-  const handleRegisterResendOtp = async () => {
-    if (!registerPhone) {
-      setRegisterError('Phone number not found');
-      return;
-    }
-
-    try {
-      setRegisterLoading(true);
-      await resendOtp({ phone: registerPhone, purpose: 'registration' });
-      toast({
-        title: 'OTP Resent',
-        description: 'Check your phone for the new OTP code',
-      });
-    } catch (error) {
-      setRegisterError(error?.message || 'Failed to resend OTP');
-    } finally {
-      setRegisterLoading(false);
+      await verifyOtp(otpPhone, otp, otpPurpose);
+      handleAuthSuccess();
+    } catch (error: any) {
+      throw error; // Re-throw to let OtpModal handle the error display
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-2">
-            Career Grid
-          </h1>
-          <p className="text-gray-600">Find your next opportunity</p>
-        </div>
-
-        {/* Auth Card */}
-        <Card className="shadow-xl border-0">
-          <Tabs defaultValue={defaultTab} className="w-full">
-            {/* Tab List */}
-            <TabsList className="grid w-full grid-cols-2 rounded-t-lg border-b">
-              <TabsTrigger value="login" className="rounded-none">
-                Login
-              </TabsTrigger>
-              <TabsTrigger value="register" className="rounded-none">
-                Sign Up
-              </TabsTrigger>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center">
+          <CardTitle className="text-2xl font-bold">Welcome to CareerGrid</CardTitle>
+          <CardDescription>
+            {activeTab === 'login'
+              ? 'Sign in to your account to continue'
+              : 'Create an account to get started'}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'login' | 'register')}>
+            <TabsList className="grid w-full grid-cols-2 mb-6">
+              <TabsTrigger value="login">Login</TabsTrigger>
+              <TabsTrigger value="register">Register</TabsTrigger>
             </TabsList>
 
             {/* LOGIN TAB */}
             <TabsContent value="login">
-              <CardHeader>
-                <CardTitle>Welcome Back</CardTitle>
-                <CardDescription>
-                  {loginStep === 'credentials'
-                    ? 'Enter your email and password to continue'
-                    : 'Enter the OTP sent to your phone'}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {/* Credentials Step */}
-                {loginStep === 'credentials' && (
-                  <form onSubmit={handleLoginSubmit} className="space-y-4">
-                    {loginError && (
-                      <Alert variant="destructive">
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertDescription>{loginError}</AlertDescription>
-                      </Alert>
-                    )}
+              <form onSubmit={handleLogin} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="login-email">Email</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="login-email"
+                      type="email"
+                      placeholder="you@example.com"
+                      className="pl-10"
+                      value={loginEmail}
+                      onChange={(e) => setLoginEmail(e.target.value)}
+                      disabled={isLoading}
+                    />
+                  </div>
+                </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="login-email">Email</Label>
-                      <Input
-                        id="login-email"
-                        type="email"
-                        placeholder="your@email.com"
-                        value={loginEmail}
-                        onChange={(e) => setLoginEmail(e.target.value)}
-                        disabled={loginLoading}
-                      />
-                    </div>
+                <div className="space-y-2">
+                  <Label htmlFor="login-password">Password</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="login-password"
+                      type="password"
+                      placeholder="••••••••"
+                      className="pl-10"
+                      value={loginPassword}
+                      onChange={(e) => setLoginPassword(e.target.value)}
+                      disabled={isLoading}
+                    />
+                  </div>
+                </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="login-password">Password</Label>
-                      <div className="relative">
-                        <Input
-                          id="login-password"
-                          type={showPassword ? 'text' : 'password'}
-                          placeholder="••••••••"
-                          value={loginPassword}
-                          onChange={(e) => setLoginPassword(e.target.value)}
-                          disabled={loginLoading}
-                          className="pr-10"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                        >
-                          {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                        </button>
-                      </div>
-                    </div>
+                <div className="flex justify-end">
+                  <Button
+                    type="button"
+                    variant="link"
+                    className="px-0 text-sm"
+                    onClick={() => setShowForgotPassword(true)}
+                  >
+                    Forgot password?
+                  </Button>
+                </div>
 
-                    <Button
-                      type="submit"
-                      className="w-full bg-blue-600 hover:bg-blue-700"
-                      disabled={loginLoading}
-                    >
-                      {loginLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      {loginLoading ? 'Signing in...' : 'Continue'}
-                    </Button>
-
-                    <div className="text-center text-sm">
-                      <button
-                        type="button"
-                        className="text-blue-600 hover:underline"
-                        onClick={() => navigate('/forgot-password')}
-                      >
-                        Forgot password?
-                      </button>
-                    </div>
-                  </form>
-                )}
-
-                {/* OTP Step */}
-                {loginStep === 'otp' && (
-                  <form onSubmit={handleLoginOtpSubmit} className="space-y-4">
-                    {loginError && (
-                      <Alert variant="destructive">
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertDescription>{loginError}</AlertDescription>
-                      </Alert>
-                    )}
-
-                    <div className="space-y-2">
-                      <Label htmlFor="login-phone">Phone Number</Label>
-                      <Input
-                        id="login-phone"
-                        type="tel"
-                        placeholder="+91 98765 43210"
-                        value={loginPhone}
-                        onChange={(e) => setLoginPhone(e.target.value)}
-                        disabled={loginLoading}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="login-otp">OTP Code</Label>
-                      <Input
-                        id="login-otp"
-                        type="text"
-                        placeholder="000000"
-                        value={loginOtp}
-                        onChange={(e) => setLoginOtp(e.target.value.slice(0, 6))}
-                        maxLength={6}
-                        disabled={loginLoading}
-                        className="text-center text-2xl tracking-widest font-mono"
-                      />
-                    </div>
-
-                    <Button
-                      type="submit"
-                      className="w-full bg-blue-600 hover:bg-blue-700"
-                      disabled={loginLoading}
-                    >
-                      {loginLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      {loginLoading ? 'Verifying...' : 'Verify OTP'}
-                    </Button>
-
-                    <div className="flex items-center justify-between text-sm">
-                      <button
-                        type="button"
-                        className="text-blue-600 hover:underline"
-                        onClick={() => setLoginStep('credentials')}
-                      >
-                        Back
-                      </button>
-                      <button
-                        type="button"
-                        className="text-blue-600 hover:underline"
-                        onClick={handleLoginResendOtp}
-                        disabled={loginLoading}
-                      >
-                        Resend OTP
-                      </button>
-                    </div>
-                  </form>
-                )}
-              </CardContent>
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Signing in...
+                    </>
+                  ) : (
+                    'Sign In'
+                  )}
+                </Button>
+              </form>
             </TabsContent>
 
             {/* REGISTER TAB */}
             <TabsContent value="register">
-              <CardHeader>
-                <CardTitle>Create Account</CardTitle>
-                <CardDescription>
-                  {registerStep === 'details'
-                    ? 'Sign up to start your career journey'
-                    : 'Verify your phone number'}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {/* Details Step */}
-                {registerStep === 'details' && (
-                  <form onSubmit={handleRegisterSubmit} className="space-y-4">
-                    {registerError && (
-                      <Alert variant="destructive">
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertDescription>{registerError}</AlertDescription>
-                      </Alert>
-                    )}
+              <form onSubmit={handleRegister} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="register-name">Full Name</Label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="register-name"
+                      type="text"
+                      placeholder="John Doe"
+                      className="pl-10"
+                      value={registerName}
+                      onChange={(e) => setRegisterName(e.target.value)}
+                      disabled={isLoading}
+                    />
+                  </div>
+                </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="register-name">Full Name</Label>
-                      <Input
-                        id="register-name"
-                        placeholder="John Doe"
-                        value={registerName}
-                        onChange={(e) => setRegisterName(e.target.value)}
-                        disabled={registerLoading}
-                      />
-                    </div>
+                <div className="space-y-2">
+                  <Label htmlFor="register-email">Email</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="register-email"
+                      type="email"
+                      placeholder="you@example.com"
+                      className="pl-10"
+                      value={registerEmail}
+                      onChange={(e) => setRegisterEmail(e.target.value)}
+                      disabled={isLoading}
+                    />
+                  </div>
+                </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="register-email">Email</Label>
-                      <Input
-                        id="register-email"
-                        type="email"
-                        placeholder="your@email.com"
-                        value={registerEmail}
-                        onChange={(e) => setRegisterEmail(e.target.value)}
-                        disabled={registerLoading}
-                      />
-                    </div>
+                <div className="space-y-2">
+                  <Label htmlFor="register-phone">Phone Number</Label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="register-phone"
+                      type="tel"
+                      placeholder="9876543210"
+                      className="pl-10"
+                      maxLength={10}
+                      value={registerPhone}
+                      onChange={(e) => setRegisterPhone(e.target.value.replace(/\D/g, ''))}
+                      disabled={isLoading}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">10-digit Indian mobile number</p>
+                </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="register-phone">Phone Number</Label>
-                      <Input
-                        id="register-phone"
-                        type="tel"
-                        placeholder="+91 98765 43210"
-                        value={registerPhone}
-                        onChange={(e) => setRegisterPhone(e.target.value)}
-                        disabled={registerLoading}
-                      />
-                    </div>
+                <div className="space-y-2">
+                  <Label htmlFor="register-usertype">I am a</Label>
+                  <Select
+                    value={registerUserType}
+                    onValueChange={(v) => setRegisterUserType(v as UserType)}
+                    disabled={isLoading}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="JOBSEEKER">
+                        <div className="flex items-center gap-2">
+                          <User className="h-4 w-4" />
+                          Job Seeker
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="EMPLOYER">
+                        <div className="flex items-center gap-2">
+                          <Briefcase className="h-4 w-4" />
+                          Employer
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="register-password">Password</Label>
-                      <div className="relative">
-                        <Input
-                          id="register-password"
-                          type={showRegisterPassword ? 'text' : 'password'}
-                          placeholder="••••••••"
-                          value={registerPassword}
-                          onChange={(e) => setRegisterPassword(e.target.value)}
-                          disabled={registerLoading}
-                          className="pr-10"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowRegisterPassword(!showRegisterPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                        >
-                          {showRegisterPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                        </button>
-                      </div>
-                      <p className="text-xs text-gray-500">At least 6 characters</p>
-                    </div>
+                <div className="space-y-2">
+                  <Label htmlFor="register-password">Password</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="register-password"
+                      type="password"
+                      placeholder="••••••••"
+                      className="pl-10"
+                      value={registerPassword}
+                      onChange={(e) => setRegisterPassword(e.target.value)}
+                      disabled={isLoading}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">Minimum 8 characters</p>
+                </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="register-usertype">I am a</Label>
-                      <Select value={registerUserType} onValueChange={setRegisterUserType}>
-                        <SelectTrigger id="register-usertype">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="jobseeker">Job Seeker</SelectItem>
-                          <SelectItem value="employer">Employer / Recruiter</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                <div className="space-y-2">
+                  <Label htmlFor="register-confirm-password">Confirm Password</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="register-confirm-password"
+                      type="password"
+                      placeholder="••••••••"
+                      className="pl-10"
+                      value={registerConfirmPassword}
+                      onChange={(e) => setRegisterConfirmPassword(e.target.value)}
+                      disabled={isLoading}
+                    />
+                  </div>
+                </div>
 
-                    <Button
-                      type="submit"
-                      className="w-full bg-blue-600 hover:bg-blue-700"
-                      disabled={registerLoading}
-                    >
-                      {registerLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      {registerLoading ? 'Creating account...' : 'Continue'}
-                    </Button>
-                  </form>
-                )}
-
-                {/* OTP Verification Step */}
-                {registerStep === 'otp' && (
-                  <form onSubmit={handleRegisterOtpSubmit} className="space-y-4">
-                    {registerError && (
-                      <Alert variant="destructive">
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertDescription>{registerError}</AlertDescription>
-                      </Alert>
-                    )}
-
-                    <div className="text-center py-4">
-                      <p className="text-gray-600 mb-2">
-                        We've sent an OTP to <strong>{registerPhone}</strong>
-                      </p>
-                      <p className="text-sm text-gray-500">Enter it below to verify your number</p>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="register-otp">OTP Code</Label>
-                      <Input
-                        id="register-otp"
-                        type="text"
-                        placeholder="000000"
-                        value={registerOtp}
-                        onChange={(e) => setRegisterOtp(e.target.value.slice(0, 6))}
-                        maxLength={6}
-                        disabled={registerLoading}
-                        className="text-center text-2xl tracking-widest font-mono"
-                      />
-                    </div>
-
-                    <Button
-                      type="submit"
-                      className="w-full bg-blue-600 hover:bg-blue-700"
-                      disabled={registerLoading}
-                    >
-                      {registerLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      {registerLoading ? 'Verifying...' : 'Complete Sign Up'}
-                    </Button>
-
-                    <div className="flex items-center justify-between text-sm">
-                      <button
-                        type="button"
-                        className="text-blue-600 hover:underline"
-                        onClick={() => setRegisterStep('details')}
-                      >
-                        Back
-                      </button>
-                      <button
-                        type="button"
-                        className="text-blue-600 hover:underline"
-                        onClick={handleRegisterResendOtp}
-                        disabled={registerLoading}
-                      >
-                        Resend OTP
-                      </button>
-                    </div>
-                  </form>
-                )}
-              </CardContent>
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Creating account...
+                    </>
+                  ) : (
+                    'Create Account'
+                  )}
+                </Button>
+              </form>
             </TabsContent>
           </Tabs>
+        </CardContent>
+      </Card>
 
-          {/* Footer */}
-          <div className="px-6 py-4 border-t bg-gray-50 rounded-b-lg text-center text-xs text-gray-600">
-            By continuing, you agree to our Terms of Service and Privacy Policy
-          </div>
-        </Card>
-      </div>
+      {/* OTP Modal */}
+      <OtpModal
+  open={showOtpModal}
+  onClose={() => setShowOtpModal(false)}
+  onSubmit={handleVerifyOtp}
+  title={otpPurpose === 'login' ? 'Verify Login OTP' : 'Verify Registration OTP'}
+/>
+
+      {/* Forgot Password Modal */}
+      <ForgotPasswordModal
+        isOpen={showForgotPassword}
+        onClose={() => setShowForgotPassword(false)}
+        onSuccess={() => {
+          setShowForgotPassword(false);
+          showToast.success('Password reset successful! Please login with your new password.');
+        }}
+      />
     </div>
   );
 }

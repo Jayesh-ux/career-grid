@@ -1,392 +1,162 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { profileService } from '@/lib/services/profileService';
+import { useState } from 'react';
 import {
-  JobseekerProfileResponse,
-  EmployerProfileResponse,
-  CreateJobseekerProfileRequest,
-  UpdateJobseekerProfileRequest,
-  CreateEmployerProfileRequest,
-  UpdateEmployerProfileRequest,
-  AddSkillRequest,
-  AddWorkExperienceRequest,
-  UpdateWorkExperienceRequest,
-  AddEducationRequest,
-  UpdateEducationRequest,
-  CreateCompanyRequest,
-  UpdateCompanyRequest,
-  CreateCompanyReviewRequest,
-} from '@/api/types/profile';
+  // Jobseeker Profile
+  createJobseekerProfile,
+  getMyJobseekerProfile,
+  getJobseekerProfileById,
+  updateMyJobseekerProfile,
+  deleteMyJobseekerProfile,
+  checkJobseekerProfileExists,
+  getJobseekerCompletion,
+  getJobseekerSummary,
 
-// Jobseeker Profile Hooks
-export const useCreateJobseekerProfile = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (data: CreateJobseekerProfileRequest) =>
-      profileService.createJobseekerProfile(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['jobseekerProfile'] });
-      queryClient.invalidateQueries({ queryKey: ['profileExists'] });
-    },
-  });
-};
+  // Employer Profile
+  createEmployerProfile,
+  getMyEmployerProfile,
+  getEmployerProfileById,
+  updateMyEmployerProfile,
+  deleteMyEmployerProfile,
+  checkEmployerProfileExists,
 
-export const useMyJobseekerProfile = () => {
-  return useQuery({
-    queryKey: ['jobseekerProfile', 'me'],
-    queryFn: () => profileService.getMyJobseekerProfile(),
-    retry: 1,
-    staleTime: 5 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
-    enabled: !!localStorage.getItem('authToken'),
-  });
-};
+  // Skills
+  getAllSkills,
+  searchSkills,
+  addSkillToProfile,
+  getMySkills,
+  updateSkill,
+  deleteSkill,
 
-export const useJobseekerProfile = (profileId: number) => {
-  return useQuery({
-    queryKey: ['jobseekerProfile', profileId],
-    queryFn: () => profileService.getJobseekerProfile(profileId),
-    retry: 1,
-    staleTime: 5 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
-  });
-};
+  // Education
+  addEducation,
+  getMyEducation,
+  updateEducation,
+  deleteEducation,
 
-export const useUpdateJobseekerProfile = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (data: UpdateJobseekerProfileRequest) =>
-      profileService.updateJobseekerProfile(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['jobseekerProfile', 'me'] });
-      queryClient.invalidateQueries({ queryKey: ['profileCompletion'] });
-    },
-  });
-};
+  // Work Experience
+  addWorkExperience,
+  getMyWorkExperience,
+  updateWorkExperience,
+  deleteWorkExperience,
 
-export const useJobseekerProfileExists = () => {
-  return useQuery({
-    queryKey: ['profileExists', 'jobseeker'],
-    queryFn: () => profileService.jobseekerProfileExists(),
-    retry: 1,
-    staleTime: 5 * 60 * 1000,
-    enabled: !!localStorage.getItem('authToken'),
-  });
-};
+  // Companies
+  createCompany,
+  getCompanyById,
+  getAllCompanies,
+  searchCompanies,
+  getMyCompanies,
+  updateCompany,
+  deleteCompany,
 
-export const useProfileCompletion = () => {
-  return useQuery({
-    queryKey: ['profileCompletion'],
-    queryFn: () => profileService.getProfileCompletion(),
-    retry: 1,
-    staleTime: 2 * 60 * 1000,
-    enabled: !!localStorage.getItem('authToken'),
-  });
-};
+  // Company Reviews
+  submitCompanyReview,
+  getCompanyReviews,
+  getMyReviews,
+  updateReview,
+  deleteReview,
 
-export const useProfileSummary = () => {
-  return useQuery({
-    queryKey: ['profileSummary'],
-    queryFn: () => profileService.getProfileSummary(),
-    retry: 1,
-    staleTime: 5 * 60 * 1000,
-    enabled: !!localStorage.getItem('authToken'),
-  });
-};
+  // Types
+  type JobseekerProfileResponse,
+  type EmployerProfileResponse,
+  type CreateJobseekerProfileRequest,
+  type CreateEmployerProfileRequest,
+  type CreateSkillRequest,
+  type CreateEducationRequest,
+  type CreateWorkExperienceRequest,
+  type CreateCompanyRequest,
+  type CreateReviewRequest,
+} from '@/lib/services/profileService';
 
-// Employer Profile Hooks
-export const useCreateEmployerProfile = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (data: CreateEmployerProfileRequest) =>
-      profileService.createEmployerProfile(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['employerProfile'] });
-      queryClient.invalidateQueries({ queryKey: ['profileExists', 'employer'] });
-    },
-  });
-};
+export const useProfileApi = () => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-export const useMyEmployerProfile = () => {
-  return useQuery({
-    queryKey: ['employerProfile', 'me'],
-    queryFn: () => profileService.getMyEmployerProfile(),
-    retry: 1,
-    staleTime: 5 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
-    enabled: !!localStorage.getItem('authToken'),
-  });
-};
+  const handleApiCall = async <T,>(apiCall: () => Promise<T>): Promise<T> => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await apiCall();
+      return result;
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || err.message || 'An error occurred';
+      setError(errorMessage);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
 
-export const useEmployerProfile = (employerId: number) => {
-  return useQuery({
-    queryKey: ['employerProfile', employerId],
-    queryFn: () => profileService.getEmployerProfile(employerId),
-    retry: 1,
-    staleTime: 5 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
-  });
-};
+  return {
+    loading,
+    error,
 
-export const useUpdateEmployerProfile = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (data: UpdateEmployerProfileRequest) =>
-      profileService.updateEmployerProfile(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['employerProfile', 'me'] });
-    },
-  });
-};
+    // Jobseeker Profile
+    createJobseekerProfile: (data: CreateJobseekerProfileRequest) =>
+      handleApiCall(() => createJobseekerProfile(data)),
+    getMyJobseekerProfile: () => handleApiCall(() => getMyJobseekerProfile()),
+    getJobseekerProfileById: (profileId: number) =>
+      handleApiCall(() => getJobseekerProfileById(profileId)),
+    updateMyJobseekerProfile: (data: Partial<CreateJobseekerProfileRequest>) =>
+      handleApiCall(() => updateMyJobseekerProfile(data)),
+    deleteMyJobseekerProfile: () => handleApiCall(() => deleteMyJobseekerProfile()),
+    checkJobseekerProfileExists: () => handleApiCall(() => checkJobseekerProfileExists()),
+    getJobseekerCompletion: () => handleApiCall(() => getJobseekerCompletion()),
+    getJobseekerSummary: () => handleApiCall(() => getJobseekerSummary()),
 
-export const useEmployerProfileExists = () => {
-  return useQuery({
-    queryKey: ['profileExists', 'employer'],
-    queryFn: () => profileService.employerProfileExists(),
-    retry: 1,
-    staleTime: 5 * 60 * 1000,
-    enabled: !!localStorage.getItem('authToken'),
-  });
-};
+    // Employer Profile
+    createEmployerProfile: (data: CreateEmployerProfileRequest) =>
+      handleApiCall(() => createEmployerProfile(data)),
+    getMyEmployerProfile: () => handleApiCall(() => getMyEmployerProfile()),
+    getEmployerProfileById: (employerId: number) =>
+      handleApiCall(() => getEmployerProfileById(employerId)),
+    updateMyEmployerProfile: (data: Partial<CreateEmployerProfileRequest>) =>
+      handleApiCall(() => updateMyEmployerProfile(data)),
+    deleteMyEmployerProfile: () => handleApiCall(() => deleteMyEmployerProfile()),
+    checkEmployerProfileExists: () => handleApiCall(() => checkEmployerProfileExists()),
 
-// Skills Hooks
-export const useAllSkills = () => {
-  return useQuery({
-    queryKey: ['skills', 'all'],
-    queryFn: () => profileService.getAllSkills(),
-    retry: 1,
-    staleTime: 30 * 60 * 1000,
-    gcTime: 60 * 60 * 1000,
-  });
-};
+    // Skills
+    getAllSkills: (page = 0, size = 50) => handleApiCall(() => getAllSkills(page, size)),
+    searchSkills: (name: string) => handleApiCall(() => searchSkills(name)),
+    addSkillToProfile: (data: CreateSkillRequest) =>
+      handleApiCall(() => addSkillToProfile(data)),
+    getMySkills: () => handleApiCall(() => getMySkills()),
+    updateSkill: (id: number, data: Partial<CreateSkillRequest>) =>
+      handleApiCall(() => updateSkill(id, data)),
+    deleteSkill: (id: number) => handleApiCall(() => deleteSkill(id)),
 
-export const useMySkills = () => {
-  return useQuery({
-    queryKey: ['skills', 'my'],
-    queryFn: () => profileService.getMySkills(),
-    retry: 1,
-    staleTime: 5 * 60 * 1000,
-    enabled: !!localStorage.getItem('authToken'),
-  });
-};
+    // Education
+    addEducation: (data: CreateEducationRequest) => handleApiCall(() => addEducation(data)),
+    getMyEducation: () => handleApiCall(() => getMyEducation()),
+    updateEducation: (educationId: number, data: Partial<CreateEducationRequest>) =>
+      handleApiCall(() => updateEducation(educationId, data)),
+    deleteEducation: (educationId: number) => handleApiCall(() => deleteEducation(educationId)),
 
-export const useAddSkill = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (data: AddSkillRequest) => profileService.addSkill(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['skills', 'my'] });
-      queryClient.invalidateQueries({ queryKey: ['profileCompletion'] });
-    },
-  });
-};
+    // Work Experience
+    addWorkExperience: (data: CreateWorkExperienceRequest) =>
+      handleApiCall(() => addWorkExperience(data)),
+    getMyWorkExperience: () => handleApiCall(() => getMyWorkExperience()),
+    updateWorkExperience: (experienceId: number, data: Partial<CreateWorkExperienceRequest>) =>
+      handleApiCall(() => updateWorkExperience(experienceId, data)),
+    deleteWorkExperience: (experienceId: number) =>
+      handleApiCall(() => deleteWorkExperience(experienceId)),
 
-export const useRemoveSkill = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (skillId: number) => profileService.removeSkill(skillId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['skills', 'my'] });
-    },
-  });
-};
+    // Companies
+    createCompany: (data: CreateCompanyRequest) => handleApiCall(() => createCompany(data)),
+    getCompanyById: (companyId: number) => handleApiCall(() => getCompanyById(companyId)),
+    getAllCompanies: (page = 0, size = 10) => handleApiCall(() => getAllCompanies(page, size)),
+    searchCompanies: (name: string) => handleApiCall(() => searchCompanies(name)),
+    getMyCompanies: () => handleApiCall(() => getMyCompanies()),
+    updateCompany: (companyId: number, data: Partial<CreateCompanyRequest>) =>
+      handleApiCall(() => updateCompany(companyId, data)),
+    deleteCompany: (companyId: number) => handleApiCall(() => deleteCompany(companyId)),
 
-// Work Experience Hooks
-export const useMyWorkExperience = () => {
-  return useQuery({
-    queryKey: ['workExperience', 'my'],
-    queryFn: () => profileService.getMyWorkExperience(),
-    retry: 1,
-    staleTime: 5 * 60 * 1000,
-    enabled: !!localStorage.getItem('authToken'),
-  });
-};
-
-export const useAddWorkExperience = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (data: AddWorkExperienceRequest) => profileService.addWorkExperience(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['workExperience', 'my'] });
-      queryClient.invalidateQueries({ queryKey: ['profileCompletion'] });
-    },
-  });
-};
-
-export const useUpdateWorkExperience = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: UpdateWorkExperienceRequest }) =>
-      profileService.updateWorkExperience(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['workExperience', 'my'] });
-    },
-  });
-};
-
-export const useDeleteWorkExperience = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (experienceId: number) => profileService.deleteWorkExperience(experienceId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['workExperience', 'my'] });
-    },
-  });
-};
-
-// Education Hooks
-export const useMyEducation = () => {
-  return useQuery({
-    queryKey: ['education', 'my'],
-    queryFn: () => profileService.getMyEducation(),
-    retry: 1,
-    staleTime: 5 * 60 * 1000,
-    enabled: !!localStorage.getItem('authToken'),
-  });
-};
-
-export const useAddEducation = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (data: AddEducationRequest) => profileService.addEducation(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['education', 'my'] });
-      queryClient.invalidateQueries({ queryKey: ['profileCompletion'] });
-    },
-  });
-};
-
-export const useUpdateEducation = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: UpdateEducationRequest }) =>
-      profileService.updateEducation(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['education', 'my'] });
-    },
-  });
-};
-
-export const useDeleteEducation = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (educationId: number) => profileService.deleteEducation(educationId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['education', 'my'] });
-    },
-  });
-};
-
-// Company Hooks
-export const useAllCompanies = (page: number = 0, size: number = 10) => {
-  return useQuery({
-    queryKey: ['companies', 'all', page, size],
-    queryFn: () => profileService.getAllCompanies(page, size),
-    retry: 1,
-    staleTime: 10 * 60 * 1000,
-  });
-};
-
-export const useCompanyById = (companyId: number) => {
-  return useQuery({
-    queryKey: ['company', companyId],
-    queryFn: () => profileService.getCompanyById(companyId),
-    retry: 1,
-    staleTime: 10 * 60 * 1000,
-  });
-};
-
-export const useSearchCompanies = (name: string) => {
-  return useQuery({
-    queryKey: ['companies', 'search', name],
-    queryFn: () => profileService.searchCompanies(name),
-    retry: 1,
-    staleTime: 5 * 60 * 1000,
-    enabled: !!name,
-  });
-};
-
-export const useCreateCompany = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (data: CreateCompanyRequest) => profileService.createCompany(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['companies', 'my'] });
-    },
-  });
-};
-
-export const useUpdateCompany = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: UpdateCompanyRequest }) =>
-      profileService.updateCompany(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['companies', 'my'] });
-    },
-  });
-};
-
-export const useMyCompanies = () => {
-  return useQuery({
-    queryKey: ['companies', 'my'],
-    queryFn: () => profileService.getMyCompanies(),
-    retry: 1,
-    staleTime: 5 * 60 * 1000,
-    enabled: !!localStorage.getItem('authToken'),
-  });
-};
-
-// Company Reviews Hooks
-export const useCompanyReviews = (companyId: number, onlyApproved: boolean = true) => {
-  return useQuery({
-    queryKey: ['companyReviews', companyId, onlyApproved],
-    queryFn: () => profileService.getCompanyReviews(companyId, onlyApproved),
-    retry: 1,
-    staleTime: 10 * 60 * 1000,
-  });
-};
-
-export const useSubmitReview = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ companyId, data }: { companyId: number; data: CreateCompanyReviewRequest }) =>
-      profileService.submitReview(companyId, data),
-    onSuccess: (_, { companyId }) => {
-      queryClient.invalidateQueries({ queryKey: ['companyReviews', companyId] });
-      queryClient.invalidateQueries({ queryKey: ['myReviews'] });
-    },
-  });
-};
-
-export const useMyReviews = () => {
-  return useQuery({
-    queryKey: ['myReviews'],
-    queryFn: () => profileService.getMyReviews(),
-    retry: 1,
-    staleTime: 5 * 60 * 1000,
-    enabled: !!localStorage.getItem('authToken'),
-  });
-};
-
-export const useUpdateReview = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: CreateCompanyReviewRequest }) =>
-      profileService.updateReview(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['companyReviews'] });
-      queryClient.invalidateQueries({ queryKey: ['myReviews'] });
-    },
-  });
-};
-
-export const useDeleteReview = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (reviewId: number) => profileService.deleteReview(reviewId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['companyReviews'] });
-      queryClient.invalidateQueries({ queryKey: ['myReviews'] });
-    },
-  });
+    // Company Reviews
+    submitCompanyReview: (companyId: number, data: CreateReviewRequest) =>
+      handleApiCall(() => submitCompanyReview(companyId, data)),
+    getCompanyReviews: (companyId: number, onlyApproved = true) =>
+      handleApiCall(() => getCompanyReviews(companyId, onlyApproved)),
+    getMyReviews: () => handleApiCall(() => getMyReviews()),
+    updateReview: (reviewId: number, data: Partial<CreateReviewRequest>) =>
+      handleApiCall(() => updateReview(reviewId, data)),
+    deleteReview: (reviewId: number) => handleApiCall(() => deleteReview(reviewId)),
+  };
 };

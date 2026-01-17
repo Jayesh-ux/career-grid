@@ -1,650 +1,682 @@
-import { jobServiceClient, handleApiError } from '@/lib/apiClient';
-import {
-  JobResponse,
-  JobSummaryResponse,
-  CreateJobRequest,
-  UpdateJobRequest,
-  JobSearchRequest,
-  ApplicationResponse,
-  ApplicationSummaryResponse,
-  ApplyJobRequest,
-  UpdateApplicationStatusRequest,
-  RateCandidateRequest,
-  SavedJobResponse,
-  JobAlertResponse,
-  CreateJobAlertRequest,
-  UpdateJobAlertRequest,
-  JobAlertMatchResponse,
-  InterviewResponse,
-  InterviewSummaryResponse,
-  ScheduleInterviewRequest,
-  UpdateInterviewRequest,
-  InterviewFeedbackRequest,
-  InterviewStatsResponse,
-  MessageResponse,
-  SendMessageRequest,
-  ConversationResponse,
-  NotificationResponse,
-  NotificationStatsResponse,
-  ApplicationStatsResponse,
-} from '@/api/types/job';
+import { jobApi } from '../apiClient';
 
-export const jobService = {
-  // Job Management
-  createJob: async (data: CreateJobRequest) => {
-    try {
-      const response = await jobServiceClient.post('/jobs', data);
-      return response.data as JobResponse;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+// ============================================
+// TYPES & INTERFACES
+// ============================================
 
-  getJobById: async (jobId: number) => {
-    try {
-      const response = await jobServiceClient.get(`/jobs/${jobId}`);
-      return response.data as JobResponse;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export interface JobSkillRequirement {
+  skillId: number;
+  skillName?: string;
+  importance: 'REQUIRED' | 'PREFERRED' | 'OPTIONAL';
+  minExperienceYears: number;
+}
 
-  updateJob: async (jobId: number, data: UpdateJobRequest) => {
-    try {
-      const response = await jobServiceClient.put(`/jobs/${jobId}`, data);
-      return response.data as JobResponse;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export interface CreateJobRequest {
+  jobTitle: string;
+  jobDescription: string;
+  jobRequirements: string;
+  employmentType: 'Full-time' | 'Part-time' | 'Contract' | 'Internship' | 'Freelance';
+  experienceLevel: '0-1' | '1-3' | '3-5' | '5-10' | '10+';
+  minExperienceYears: number;
+  maxExperienceYears: number;
+  minSalary: number;
+  maxSalary: number;
+  jobLocation: string;
+  isRemote: boolean;
+  industry: string;
+  department: string;
+  numberOfOpenings: number;
+  applicationDeadline: string;
+  skills?: JobSkillRequirement[];
+}
 
-  deleteJob: async (jobId: number) => {
-    try {
-      const response = await jobServiceClient.delete(`/jobs/${jobId}`);
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export interface JobResponse {
+  jobId: number;
+  jobTitle: string;
+  employerId: number;
+  companyName: string;
+  jobDescription: string;
+  jobRequirements: string;
+  employmentType: string;
+  experienceLevel: string;
+  minExperienceYears: number;
+  maxExperienceYears: number;
+  minSalary: number;
+  maxSalary: number;
+  jobLocation: string;
+  isRemote: boolean;
+  industry: string;
+  department: string;
+  jobStatus: 'ACTIVE' | 'CLOSED' | 'PAUSED' | 'DELETED';
+  numberOfOpenings: number;
+  applicationsCount: number;
+  viewsCount: number;
+  applicationDeadline: string;
+  postedAt: string;
+  skills?: JobSkillRequirement[];
+}
 
-  changeJobStatus: async (jobId: number, status: string) => {
-    try {
-      const response = await jobServiceClient.patch(`/jobs/${jobId}/status`, null, {
-        params: { arg1: status },
-      });
-      return response.data as JobResponse;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export interface JobSearchRequest {
+  jobTitle?: string;
+  location?: string;
+  industry?: string;
+  employmentType?: string;
+  experienceLevel?: string;
+  minSalary?: number;
+  maxSalary?: number;
+  isRemote?: boolean;
+  companyName?: string;
+  page?: number;
+  size?: number;
+}
 
-  searchJobs: async (criteria: JobSearchRequest) => {
-    try {
-      const response = await jobServiceClient.post('/jobs/search', criteria);
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export interface PaginatedResponse<T> {
+  content: T[];
+  totalElements: number;
+  totalPages: number;
+  size: number;
+  number: number;
+}
 
-  getMyJobs: async (page: number = 0, size: number = 10, status?: string) => {
-    try {
-      const response = await jobServiceClient.get('/jobs/my-jobs', {
-        params: { arg0: page, arg1: size, arg2: status },
-      });
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export interface JobStatisticsResponse {
+  activeJobs: number;
+  draftJobs: number;
+  closedJobs: number;
+  pausedJobs: number;
+  totalJobs: number;
+  totalViewsLast30Days: number;
+  totalApplicationsLast30Days: number;
+  avgApplicationsPerJob: number;
+}
 
-  getJobStatistics: async () => {
-    try {
-      const response = await jobServiceClient.get('/jobs/statistics');
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+// ============================================
+// JOB MANAGEMENT
+// ============================================
 
-  // Job Applications
-  applyToJob: async (jobId: number, data: ApplyJobRequest) => {
-    try {
-      const response = await jobServiceClient.post(`/jobs/${jobId}/apply`, data);
-      return response.data as ApplicationResponse;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export const createJob = async (data: CreateJobRequest): Promise<JobResponse> => {
+  const response = await jobApi.post<JobResponse>('/api/v1/jobs', data);
+  return response.data;
+};
 
-  getApplicationById: async (applicationId: number) => {
-    try {
-      const response = await jobServiceClient.get(`/applications/${applicationId}`);
-      return response.data as ApplicationResponse;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export const getJobById = async (jobId: number): Promise<JobResponse> => {
+  const response = await jobApi.get<JobResponse>(`/api/v1/jobs/${jobId}`);
+  return response.data;
+};
 
-  withdrawApplication: async (applicationId: number) => {
-    try {
-      const response = await jobServiceClient.delete(`/applications/${applicationId}`);
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export const getMyJobs = async (page = 0, size = 10): Promise<PaginatedResponse<JobResponse>> => {
+  const response = await jobApi.get<PaginatedResponse<JobResponse>>(
+    `/api/v1/jobs/my-jobs?page=${page}&size=${size}`
+  );
+  return response.data;
+};
 
-  updateApplicationStatus: async (
-    applicationId: number,
-    data: UpdateApplicationStatusRequest
-  ) => {
-    try {
-      const response = await jobServiceClient.patch(`/applications/${applicationId}/status`, data);
-      return response.data as ApplicationResponse;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export const updateJob = async (
+  jobId: number,
+  data: Partial<CreateJobRequest>
+): Promise<JobResponse> => {
+  const response = await jobApi.put<JobResponse>(`/api/v1/jobs/${jobId}`, data);
+  return response.data;
+};
 
-  rateCandidate: async (applicationId: number, data: RateCandidateRequest) => {
-    try {
-      const response = await jobServiceClient.post(
-        `/applications/${applicationId}/rate`,
-        data
-      );
-      return response.data as ApplicationResponse;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export const deleteJob = async (jobId: number): Promise<void> => {
+  await jobApi.delete(`/api/v1/jobs/${jobId}`);
+};
 
-  getMyApplications: async (page: number = 0, size: number = 10, status?: string) => {
-    try {
-      const response = await jobServiceClient.get('/applications/my-applications', {
-        params: { arg0: page, arg1: size, arg2: status },
-      });
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export const closeJob = async (jobId: number): Promise<JobResponse> => {
+  const response = await jobApi.patch<JobResponse>(`/api/v1/jobs/${jobId}/close`);
+  return response.data;
+};
 
-  getAllMyApplications: async (page: number = 0, size: number = 10, status?: string) => {
-    try {
-      const response = await jobServiceClient.get('/applications/employer/all', {
-        params: { arg0: page, arg1: size, arg2: status },
-      });
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export const pauseJob = async (jobId: number): Promise<JobResponse> => {
+  const response = await jobApi.patch<JobResponse>(`/api/v1/jobs/${jobId}/pause`);
+  return response.data;
+};
 
-  getJobApplications: async (jobId: number, page: number = 0, size: number = 10, status?: string) => {
-    try {
-      const response = await jobServiceClient.get(`/jobs/${jobId}/applications`, {
-        params: { arg1: page, arg2: size, arg3: status },
-      });
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export const reopenJob = async (jobId: number): Promise<JobResponse> => {
+  const response = await jobApi.patch<JobResponse>(`/api/v1/jobs/${jobId}/reopen`);
+  return response.data;
+};
 
-  hasApplied: async (jobId: number) => {
-    try {
-      const response = await jobServiceClient.get(`/jobs/${jobId}/has-applied`);
-      return response.data as boolean;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export const searchJobs = async (
+  searchParams: JobSearchRequest
+): Promise<PaginatedResponse<JobResponse>> => {
+  const response = await jobApi.post<PaginatedResponse<JobResponse>>(
+    '/api/v1/jobs/search',
+    searchParams
+  );
+  return response.data;
+};
 
-  getApplicationStats: async (type: 'jobseeker' | 'employer') => {
-    try {
-      const url =
-        type === 'jobseeker'
-          ? '/applications/statistics/jobseeker'
-          : '/applications/statistics/employer';
-      const response = await jobServiceClient.get(url);
-      return response.data as ApplicationStatsResponse;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export const getJobStatistics = async (): Promise<JobStatisticsResponse> => {
+  const response = await jobApi.get<JobStatisticsResponse>('/api/v1/jobs/statistics');
+  return response.data;
+};
 
-  // Saved Jobs
-  saveJob: async (jobId: number) => {
-    try {
-      const response = await jobServiceClient.post(`/jobs/${jobId}/save`);
-      return response.data as SavedJobResponse;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+// ============================================
+// JOB APPLICATIONS
+// ============================================
 
-  unsaveJob: async (jobId: number) => {
-    try {
-      const response = await jobServiceClient.delete(`/jobs/${jobId}/save`);
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export interface ApplicationResponse {
+  applicationId: number;
+  jobId: number;
+  jobTitle: string;
+  profileId: number;
+  candidateName: string;
+  candidateEmail?: string;
+  candidatePhone?: string;
+  employerId: number;
+  companyName: string;
+  coverLetter: string;
+  applicationStatus: 'APPLIED' | 'SHORTLISTED' | 'INTERVIEW_SCHEDULED' | 'REJECTED' | 'HIRED' | 'WITHDRAWN';
+  appliedAt: string;
+  statusUpdatedAt?: string;
+  statusNotes?: string;
+  rating?: number;
+  trackingHistory?: ApplicationTrackingResponse[];
+}
 
-  isJobSaved: async (jobId: number) => {
-    try {
-      const response = await jobServiceClient.get(`/jobs/${jobId}/is-saved`);
-      return response.data as { isSaved: boolean };
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export interface ApplicationTrackingResponse {
+  trackingId: number;
+  oldStatus: string | null;
+  newStatus: string;
+  changedAt: string;
+  changedBy: number | null;
+  notes: string | null;
+}
 
-  getMySavedJobs: async (page: number = 0, size: number = 10, onlyActive?: boolean) => {
-    try {
-      const response = await jobServiceClient.get('/jobs/saved', {
-        params: { arg0: page, arg1: size, arg2: onlyActive },
-      });
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export interface ApplicationStatisticsResponse {
+  totalApplications: number;
+  appliedCount: number;
+  shortlistedCount: number;
+  interviewScheduledCount: number;
+  rejectedCount: number;
+  hiredCount: number;
+  withdrawnCount: number;
+  statusBreakdown: Record<string, number>;
+}
 
-  getSavedJobsCount: async () => {
-    try {
-      const response = await jobServiceClient.get('/jobs/saved/count');
-      return response.data as { count: number };
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export const applyToJob = async (jobId: number, coverLetter: string): Promise<ApplicationResponse> => {
+  const response = await jobApi.post<ApplicationResponse>(`/api/v1/jobs/${jobId}/apply`, {
+    coverLetter,
+  });
+  return response.data;
+};
 
-  clearAllSavedJobs: async () => {
-    try {
-      const response = await jobServiceClient.delete('/jobs/saved/clear-all');
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export const hasAppliedToJob = async (jobId: number): Promise<{ hasApplied: boolean }> => {
+  const response = await jobApi.get<{ hasApplied: boolean }>(`/api/v1/jobs/${jobId}/has-applied`);
+  return response.data;
+};
 
-  // Job Alerts
-  createJobAlert: async (data: CreateJobAlertRequest) => {
-    try {
-      const response = await jobServiceClient.post('/job-alerts', data);
-      return response.data as JobAlertResponse;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export const getMyApplications = async (
+  page = 0,
+  size = 10,
+  status?: string
+): Promise<PaginatedResponse<ApplicationResponse>> => {
+  const params = new URLSearchParams({ page: String(page), size: String(size) });
+  if (status) params.append('status', status);
+  const response = await jobApi.get<PaginatedResponse<ApplicationResponse>>(
+    `/api/v1/applications/my-applications?${params.toString()}`
+  );
+  return response.data;
+};
 
-  getJobAlertById: async (alertId: number) => {
-    try {
-      const response = await jobServiceClient.get(`/job-alerts/${alertId}`);
-      return response.data as JobAlertResponse;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export const getJobApplications = async (
+  jobId: number,
+  page = 0,
+  size = 10,
+  status?: string
+): Promise<PaginatedResponse<ApplicationResponse>> => {
+  const params = new URLSearchParams({ page: String(page), size: String(size) });
+  if (status) params.append('status', status);
+  const response = await jobApi.get<PaginatedResponse<ApplicationResponse>>(
+    `/api/v1/jobs/${jobId}/applications?${params.toString()}`
+  );
+  return response.data;
+};
 
-  updateJobAlert: async (alertId: number, data: UpdateJobAlertRequest) => {
-    try {
-      const response = await jobServiceClient.put(`/job-alerts/${alertId}`, data);
-      return response.data as JobAlertResponse;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export const getAllEmployerApplications = async (
+  page = 0,
+  size = 10
+): Promise<PaginatedResponse<ApplicationResponse>> => {
+  const response = await jobApi.get<PaginatedResponse<ApplicationResponse>>(
+    `/api/v1/applications/employer/all?page=${page}&size=${size}`
+  );
+  return response.data;
+};
 
-  deleteJobAlert: async (alertId: number) => {
-    try {
-      const response = await jobServiceClient.delete(`/job-alerts/${alertId}`);
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export const getApplicationDetails = async (applicationId: number): Promise<ApplicationResponse> => {
+  const response = await jobApi.get<ApplicationResponse>(`/api/v1/applications/${applicationId}`);
+  return response.data;
+};
 
-  toggleAlertStatus: async (alertId: number) => {
-    try {
-      const response = await jobServiceClient.patch(`/job-alerts/${alertId}/toggle`);
-      return response.data as JobAlertResponse;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export const updateApplicationStatus = async (
+  applicationId: number,
+  status: string,
+  notes?: string
+): Promise<ApplicationResponse> => {
+  const response = await jobApi.patch<ApplicationResponse>(
+    `/api/v1/applications/${applicationId}/status`,
+    { status, notes }
+  );
+  return response.data;
+};
 
-  getMyJobAlerts: async (page: number = 0, size: number = 10, onlyActive?: boolean) => {
-    try {
-      const response = await jobServiceClient.get('/job-alerts', {
-        params: { arg0: page, arg1: size, arg2: onlyActive },
-      });
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export const withdrawApplication = async (applicationId: number): Promise<void> => {
+  await jobApi.delete(`/api/v1/applications/${applicationId}`);
+};
 
-  getMatchingJobs: async (alertId: number, page: number = 0, size: number = 10) => {
-    try {
-      const response = await jobServiceClient.get(`/job-alerts/${alertId}/matches`, {
-        params: { arg1: page, arg2: size },
-      });
-      return response.data as JobAlertMatchResponse;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export const rateCandidate = async (
+  applicationId: number,
+  rating: number,
+  notes?: string
+): Promise<ApplicationResponse> => {
+  const response = await jobApi.post<ApplicationResponse>(
+    `/api/v1/applications/${applicationId}/rate`,
+    { rating, notes }
+  );
+  return response.data;
+};
 
-  getAlertStatistics: async () => {
-    try {
-      const response = await jobServiceClient.get('/job-alerts/statistics');
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export const getJobseekerApplicationStats = async (): Promise<ApplicationStatisticsResponse> => {
+  const response = await jobApi.get<ApplicationStatisticsResponse>(
+    '/api/v1/applications/statistics/jobseeker'
+  );
+  return response.data;
+};
 
-  // Interviews
-  scheduleInterview: async (applicationId: number, data: ScheduleInterviewRequest) => {
-    try {
-      const response = await jobServiceClient.post(
-        `/applications/${applicationId}/interviews`,
-        data
-      );
-      return response.data as InterviewResponse;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export const getEmployerApplicationStats = async (): Promise<ApplicationStatisticsResponse> => {
+  const response = await jobApi.get<ApplicationStatisticsResponse>(
+    '/api/v1/applications/statistics/employer'
+  );
+  return response.data;
+};
 
-  getInterviewById: async (interviewId: number) => {
-    try {
-      const response = await jobServiceClient.get(`/interviews/${interviewId}`);
-      return response.data as InterviewResponse;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+// ============================================
+// INTERVIEWS
+// ============================================
 
-  updateInterview: async (interviewId: number, data: UpdateInterviewRequest) => {
-    try {
-      const response = await jobServiceClient.put(`/interviews/${interviewId}`, data);
-      return response.data as InterviewResponse;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export interface InterviewResponse {
+  interviewId: number;
+  applicationId: number;
+  jobId: number;
+  jobTitle: string;
+  candidateName: string;
+  employerId: number;
+  interviewType: 'Phone' | 'Video' | 'In-person' | 'Technical' | 'HR';
+  scheduledDatetime: string;
+  locationOrLink: string;
+  interviewerDetails: string;
+  instructions: string;
+  status: 'SCHEDULED' | 'COMPLETED' | 'CANCELLED' | 'RESCHEDULED';
+  createdAt: string;
+  feedback?: string;
+  rating?: number;
+}
 
-  cancelInterview: async (interviewId: number) => {
-    try {
-      const response = await jobServiceClient.delete(`/interviews/${interviewId}`);
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export const scheduleInterview = async (
+  applicationId: number,
+  data: {
+    interviewType: string;
+    scheduledDatetime: string;
+    locationOrLink: string;
+    interviewerDetails: string;
+    instructions?: string;
+  }
+): Promise<InterviewResponse> => {
+  const response = await jobApi.post<InterviewResponse>(
+    `/api/v1/applications/${applicationId}/interviews`,
+    data
+  );
+  return response.data;
+};
 
-  addInterviewFeedback: async (interviewId: number, data: InterviewFeedbackRequest) => {
-    try {
-      const response = await jobServiceClient.post(`/interviews/${interviewId}/feedback`, data);
-      return response.data as InterviewResponse;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export const getInterviewDetails = async (interviewId: number): Promise<InterviewResponse> => {
+  const response = await jobApi.get<InterviewResponse>(`/api/v1/interviews/${interviewId}`);
+  return response.data;
+};
 
-  getInterviewsForApplication: async (applicationId: number) => {
-    try {
-      const response = await jobServiceClient.get(
-        `/applications/${applicationId}/interviews`
-      );
-      return response.data as InterviewResponse[];
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export const getEmployerInterviews = async (
+  page = 0,
+  size = 10,
+  status?: string
+): Promise<PaginatedResponse<InterviewResponse>> => {
+  const params = new URLSearchParams({ page: String(page), size: String(size) });
+  if (status) params.append('status', status);
+  const response = await jobApi.get<PaginatedResponse<InterviewResponse>>(
+    `/api/v1/interviews/employer/my-interviews?${params.toString()}`
+  );
+  return response.data;
+};
 
-  getMyInterviewsAsEmployer: async (page: number = 0, size: number = 10, status?: string) => {
-    try {
-      const response = await jobServiceClient.get('/interviews/employer/my-interviews', {
-        params: { arg0: page, arg1: size, arg2: status },
-      });
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export const getCandidateInterviews = async (
+  page = 0,
+  size = 10
+): Promise<PaginatedResponse<InterviewResponse>> => {
+  const response = await jobApi.get<PaginatedResponse<InterviewResponse>>(
+    `/api/v1/interviews/candidate/my-interviews?page=${page}&size=${size}`
+  );
+  return response.data;
+};
 
-  getUpcomingInterviewsAsEmployer: async () => {
-    try {
-      const response = await jobServiceClient.get('/interviews/employer/upcoming');
-      return response.data as InterviewSummaryResponse[];
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export const getUpcomingInterviews = async (): Promise<InterviewResponse[]> => {
+  const response = await jobApi.get<InterviewResponse[]>('/api/v1/interviews/employer/upcoming');
+  return response.data;
+};
 
-  getMyInterviewsAsCandidate: async (page: number = 0, size: number = 10, status?: string) => {
-    try {
-      const response = await jobServiceClient.get('/interviews/candidate/my-interviews', {
-        params: { arg0: page, arg1: size, arg2: status },
-      });
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export const updateInterview = async (
+  interviewId: number,
+  data: Partial<{
+    scheduledDatetime: string;
+    locationOrLink: string;
+    interviewerDetails: string;
+    instructions: string;
+  }>
+): Promise<InterviewResponse> => {
+  const response = await jobApi.put<InterviewResponse>(`/api/v1/interviews/${interviewId}`, data);
+  return response.data;
+};
 
-  getUpcomingInterviewsAsCandidate: async () => {
-    try {
-      const response = await jobServiceClient.get('/interviews/candidate/upcoming');
-      return response.data as InterviewSummaryResponse[];
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export const cancelInterview = async (interviewId: number, reason: string): Promise<InterviewResponse> => {
+  const response = await jobApi.patch<InterviewResponse>(
+    `/api/v1/interviews/${interviewId}/cancel`,
+    { reason }
+  );
+  return response.data;
+};
 
-  getInterviewStats: async (type: 'employer' | 'candidate') => {
-    try {
-      const url =
-        type === 'employer'
-          ? '/interviews/statistics/employer'
-          : '/interviews/statistics/candidate';
-      const response = await jobServiceClient.get(url);
-      return response.data as InterviewStatsResponse;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export const rescheduleInterview = async (
+  interviewId: number,
+  newDatetime: string,
+  reason?: string
+): Promise<InterviewResponse> => {
+  const response = await jobApi.patch<InterviewResponse>(
+    `/api/v1/interviews/${interviewId}/reschedule`,
+    { newDatetime, reason }
+  );
+  return response.data;
+};
 
-  // Messaging
-  sendMessage: async (data: SendMessageRequest) => {
-    try {
-      const response = await jobServiceClient.post('/messages', data);
-      return response.data as MessageResponse;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export const submitInterviewFeedback = async (
+  interviewId: number,
+  feedback: string,
+  rating: number
+): Promise<InterviewResponse> => {
+  const response = await jobApi.post<InterviewResponse>(
+    `/api/v1/interviews/${interviewId}/feedback`,
+    { feedback, rating }
+  );
+  return response.data;
+};
 
-  getConversation: async (otherUserId: number, page: number = 0, size: number = 20) => {
-    try {
-      const response = await jobServiceClient.get(`/messages/conversation/${otherUserId}`, {
-        params: { arg1: page, arg2: size },
-      });
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+// ============================================
+// SAVED JOBS
+// ============================================
 
-  getAllConversations: async () => {
-    try {
-      const response = await jobServiceClient.get('/messages/conversations');
-      return response.data as ConversationResponse[];
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export const saveJob = async (jobId: number): Promise<void> => {
+  await jobApi.post(`/api/v1/jobs/${jobId}/save`);
+};
 
-  deleteConversation: async (otherUserId: number) => {
-    try {
-      const response = await jobServiceClient.delete(`/messages/conversation/${otherUserId}`);
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export const unsaveJob = async (jobId: number): Promise<void> => {
+  await jobApi.delete(`/api/v1/jobs/${jobId}/unsave`);
+};
 
-  markConversationAsRead: async (otherUserId: number) => {
-    try {
-      const response = await jobServiceClient.patch(
-        `/messages/conversation/${otherUserId}/read`
-      );
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export const getSavedJobs = async (page = 0, size = 10): Promise<PaginatedResponse<JobResponse>> => {
+  const response = await jobApi.get<PaginatedResponse<JobResponse>>(
+    `/api/v1/jobs/saved?page=${page}&size=${size}`
+  );
+  return response.data;
+};
 
-  searchMessages: async (keyword: string, page: number = 0, size: number = 20) => {
-    try {
-      const response = await jobServiceClient.get('/messages/search', {
-        params: { arg0: keyword, arg1: page, arg2: size },
-      });
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export const isJobSaved = async (jobId: number): Promise<{ isSaved: boolean }> => {
+  const response = await jobApi.get<{ isSaved: boolean }>(`/api/v1/jobs/${jobId}/is-saved`);
+  return response.data;
+};
 
-  getUnreadMessageCount: async () => {
-    try {
-      const response = await jobServiceClient.get('/messages/unread-count');
-      return response.data as { count: number };
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export const getSavedJobsCount = async (): Promise<{ count: number }> => {
+  const response = await jobApi.get<{ count: number }>('/api/v1/jobs/saved/count');
+  return response.data;
+};
 
-  getMessageStatistics: async () => {
-    try {
-      const response = await jobServiceClient.get('/messages/statistics');
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export const clearAllSavedJobs = async (): Promise<void> => {
+  await jobApi.delete('/api/v1/jobs/saved/clear-all');
+};
 
-  // Notifications
-  getNotifications: async (
-    page: number = 0,
-    size: number = 20,
-    onlyUnread?: boolean,
-    type?: string
-  ) => {
-    try {
-      const response = await jobServiceClient.get('/notifications', {
-        params: { arg0: page, arg1: size, arg2: onlyUnread, arg3: type },
-      });
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+// ============================================
+// JOB ALERTS
+// ============================================
 
-  getNotificationById: async (notificationId: number) => {
-    try {
-      const response = await jobServiceClient.get(`/notifications/${notificationId}`);
-      return response.data as NotificationResponse;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export interface JobAlertResponse {
+  alertId: number;
+  profileId: number;
+  alertName: string;
+  keywords: string;
+  location: string;
+  industry: string;
+  employmentType: string;
+  minSalary: number;
+  maxSalary: number;
+  experienceLevel: string;
+  isRemote: boolean;
+  frequency: 'DAILY' | 'WEEKLY' | 'INSTANT';
+  isActive: boolean;
+  createdAt: string;
+  lastSent: string | null;
+}
 
-  markNotificationAsRead: async (notificationId: number) => {
-    try {
-      const response = await jobServiceClient.patch(`/notifications/${notificationId}/read`);
-      return response.data as NotificationResponse;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export interface CreateJobAlertRequest {
+  alertName: string;
+  keywords?: string;
+  location?: string;
+  industry?: string;
+  employmentType?: string;
+  minSalary?: number;
+  maxSalary?: number;
+  experienceLevel?: string;
+  isRemote?: boolean;
+  frequency: 'DAILY' | 'WEEKLY' | 'INSTANT';
+}
 
-  markAllNotificationsAsRead: async () => {
-    try {
-      const response = await jobServiceClient.patch('/notifications/mark-all-read');
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export const createJobAlert = async (data: CreateJobAlertRequest): Promise<JobAlertResponse> => {
+  const response = await jobApi.post<JobAlertResponse>('/api/v1/job-alerts', data);
+  return response.data;
+};
 
-  deleteNotification: async (notificationId: number) => {
-    try {
-      const response = await jobServiceClient.delete(`/notifications/${notificationId}`);
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export const getMyJobAlerts = async (): Promise<JobAlertResponse[]> => {
+  const response = await jobApi.get<JobAlertResponse[]>('/api/v1/job-alerts/my-alerts');
+  return response.data;
+};
 
-  deleteAllReadNotifications: async () => {
-    try {
-      const response = await jobServiceClient.delete('/notifications/read');
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export const updateJobAlert = async (
+  alertId: number,
+  data: Partial<CreateJobAlertRequest>
+): Promise<JobAlertResponse> => {
+  const response = await jobApi.put<JobAlertResponse>(`/api/v1/job-alerts/${alertId}`, data);
+  return response.data;
+};
 
-  cleanupOldNotifications: async () => {
-    try {
-      const response = await jobServiceClient.delete('/notifications/cleanup');
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export const deleteJobAlert = async (alertId: number): Promise<void> => {
+  await jobApi.delete(`/api/v1/job-alerts/${alertId}`);
+};
 
-  getUnreadCount: async () => {
-    try {
-      const response = await jobServiceClient.get('/notifications/unread-count');
-      return response.data as { count: number };
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export const toggleJobAlert = async (alertId: number): Promise<JobAlertResponse> => {
+  const response = await jobApi.patch<JobAlertResponse>(`/api/v1/job-alerts/${alertId}/toggle`);
+  return response.data;
+};
 
-  getNotificationStats: async () => {
-    try {
-      const response = await jobServiceClient.get('/notifications/statistics');
-      return response.data as NotificationStatsResponse;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export const getMatchingJobsForAlert = async (
+  alertId: number,
+  page = 0,
+  size = 10
+): Promise<PaginatedResponse<JobResponse>> => {
+  const response = await jobApi.get<PaginatedResponse<JobResponse>>(
+    `/api/v1/job-alerts/${alertId}/matching-jobs?page=${page}&size=${size}`
+  );
+  return response.data;
+};
 
-  // Health Check
-  healthCheck: async () => {
-    try {
-      const response = await jobServiceClient.get('/health');
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+// ============================================
+// SUBSCRIPTIONS
+// ============================================
 
-  readinessCheck: async () => {
-    try {
-      const response = await jobServiceClient.get('/health/ready');
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export interface SubscriptionPlanResponse {
+  planId: number;
+  planName: string;
+  description: string;
+  price: number;
+  durationDays: number;
+  jobPostingLimit: number;
+  featuredJobSlots: number;
+  resumeAccessLimit: number;
+  supportLevel: string;
+  features: string[];
+  isActive: boolean;
+}
+
+export interface SubscriptionResponse {
+  subscriptionId: number;
+  employerId: number;
+  planId: number;
+  planName: string;
+  startDate: string;
+  endDate: string;
+  status: 'ACTIVE' | 'EXPIRED' | 'CANCELLED';
+  jobsPosted: number;
+  jobPostingLimit: number;
+  autoRenew: boolean;
+}
+
+export const getSubscriptionPlans = async (): Promise<SubscriptionPlanResponse[]> => {
+  const response = await jobApi.get<SubscriptionPlanResponse[]>('/api/v1/subscription-plans');
+  return response.data;
+};
+
+export const subscribeToPlan = async (planId: number): Promise<SubscriptionResponse> => {
+  const response = await jobApi.post<SubscriptionResponse>('/api/v1/subscriptions/subscribe', {
+    planId,
+  });
+  return response.data;
+};
+
+export const getMySubscription = async (): Promise<SubscriptionResponse> => {
+  const response = await jobApi.get<SubscriptionResponse>('/api/v1/subscriptions/my-subscription');
+  return response.data;
+};
+
+export const cancelSubscription = async (subscriptionId: number): Promise<SubscriptionResponse> => {
+  const response = await jobApi.patch<SubscriptionResponse>(
+    `/api/v1/subscriptions/${subscriptionId}/cancel`
+  );
+  return response.data;
+};
+
+export const checkSubscriptionAccess = async (): Promise<{ hasAccess: boolean; message: string }> => {
+  const response = await jobApi.get<{ hasAccess: boolean; message: string }>(
+    '/api/v1/subscriptions/check-access'
+  );
+  return response.data;
+};
+
+// ============================================
+// MESSAGING
+// ============================================
+
+export interface MessageThreadResponse {
+  threadId: number;
+  jobId: number;
+  jobTitle: string;
+  candidateId: number;
+  candidateName: string;
+  employerId: number;
+  employerName: string;
+  lastMessage: string;
+  lastMessageTime: string;
+  unreadCount: number;
+}
+
+export interface MessageResponse {
+  messageId: number;
+  threadId: number;
+  senderId: number;
+  senderName: string;
+  receiverId: number;
+  messageText: string;
+  sentAt: string;
+  isRead: boolean;
+}
+
+export const getMyThreads = async (page = 0, size = 20): Promise<PaginatedResponse<MessageThreadResponse>> => {
+  const response = await jobApi.get<PaginatedResponse<MessageThreadResponse>>(
+    `/api/v1/messages/my-threads?page=${page}&size=${size}`
+  );
+  return response.data;
+};
+
+export const getThreadMessages = async (
+  threadId: number,
+  page = 0,
+  size = 50
+): Promise<PaginatedResponse<MessageResponse>> => {
+  const response = await jobApi.get<PaginatedResponse<MessageResponse>>(
+    `/api/v1/messages/threads/${threadId}?page=${page}&size=${size}`
+  );
+  return response.data;
+};
+
+export const sendMessage = async (threadId: number, messageText: string): Promise<MessageResponse> => {
+  const response = await jobApi.post<MessageResponse>('/api/v1/messages/send', {
+    threadId,
+    messageText,
+  });
+  return response.data;
+};
+
+export const markMessageAsRead = async (messageId: number): Promise<void> => {
+  await jobApi.patch(`/api/v1/messages/${messageId}/read`);
+};
+
+export const getUnreadCount = async (): Promise<{ count: number }> => {
+  const response = await jobApi.get<{ count: number }>('/api/v1/messages/unread-count');
+  return response.data;
+};
+
+// ============================================
+// NOTIFICATIONS
+// ============================================
+
+export interface NotificationResponse {
+  notificationId: number;
+  userId: number;
+  type: string;
+  title: string;
+  message: string;
+  relatedEntityId: number | null;
+  isRead: boolean;
+  createdAt: string;
+}
+
+export const getMyNotifications = async (
+  page = 0,
+  size = 20
+): Promise<PaginatedResponse<NotificationResponse>> => {
+  const response = await jobApi.get<PaginatedResponse<NotificationResponse>>(
+    `/api/v1/notifications?page=${page}&size=${size}`
+  );
+  return response.data;
+};
+
+export const markNotificationAsRead = async (notificationId: number): Promise<void> => {
+  await jobApi.patch(`/api/v1/notifications/${notificationId}/read`);
+};
+
+export const markAllNotificationsAsRead = async (): Promise<void> => {
+  await jobApi.patch('/api/v1/notifications/read-all');
+};
+
+export const getUnreadNotificationsCount = async (): Promise<{ count: number }> => {
+  const response = await jobApi.get<{ count: number }>('/api/v1/notifications/unread-count');
+  return response.data;
+};
+
+export const deleteNotification = async (notificationId: number): Promise<void> => {
+  await jobApi.delete(`/api/v1/notifications/${notificationId}`);
 };

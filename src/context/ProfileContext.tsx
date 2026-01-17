@@ -1,38 +1,28 @@
 import React, { createContext, useContext, ReactNode, useEffect, useCallback, useMemo } from 'react';
-import {
-  useMyJobseekerProfile,
-  useCreateJobseekerProfile,
-  useUpdateJobseekerProfile,
-  useMyWorkExperience,
-  useAddWorkExperience,
-  useUpdateWorkExperience,
-  useDeleteWorkExperience,
-  useMyEducation,
-  useAddEducation,
-  useUpdateEducation,
-  useDeleteEducation,
-  useMySkills,
-  useAddSkill,
-  useRemoveSkill,
-  useProfileCompletion,
-  useMyEmployerProfile,
-  useCreateEmployerProfile,
-} from '@/hooks/useProfileApi';
+import { useProfileApi } from '@/hooks/useProfileApi';
 import {
   JobseekerProfileResponse,
-  WorkExperienceResponse,
-  EducationResponse,
-  JobseekerSkillResponse,
-  CreateJobseekerProfileRequest,
-  UpdateJobseekerProfileRequest,
-  AddWorkExperienceRequest,
-  UpdateWorkExperienceRequest,
-  AddEducationRequest,
-  UpdateEducationRequest,
-  AddSkillRequest,
   EmployerProfileResponse,
+  SkillResponse,
+  EducationResponse,
+  WorkExperienceResponse,
+  CreateJobseekerProfileRequest,
   CreateEmployerProfileRequest,
-} from '@/api/types/profile';
+  CreateSkillRequest,
+  CreateEducationRequest,
+  CreateWorkExperienceRequest,
+} from '@/lib/services/profileService';
+
+// Type aliases for compatibility with existing ProfileContext interface
+type JobseekerSkillResponse = SkillResponse;
+type AddSkillRequest = CreateSkillRequest;
+type AddEducationRequest = CreateEducationRequest;
+type AddWorkExperienceRequest = CreateWorkExperienceRequest;
+type UpdateJobseekerProfileRequest = Partial<CreateJobseekerProfileRequest>;
+type UpdateWorkExperienceRequest = Partial<CreateWorkExperienceRequest>;
+type UpdateEducationRequest = Partial<CreateEducationRequest>;
+
+
 
 interface ProfileContextType {
   // State
@@ -78,145 +68,162 @@ export const ProfileProvider: React.FC<{ children: ReactNode; autoLoad?: boolean
   children,
   autoLoad = false,
 }) => {
-  // Jobseeker Profile queries
-  const { data: jobseekerData, refetch: refetchJobseeker, isLoading: jobseekerLoading } = useMyJobseekerProfile();
-  const { data: employerData, refetch: refetchEmployer } = useMyEmployerProfile();
-  const { data: experienceData, refetch: refetchExperience } = useMyWorkExperience();
-  const { data: educationData, refetch: refetchEducation } = useMyEducation();
-  const { data: skillsData, refetch: refetchSkills } = useMySkills();
-  const { data: completionData } = useProfileCompletion();
+  const profileApi = useProfileApi();
 
-  // Jobseeker mutations
-  const { mutateAsync: createJobseekerAsync, isPending: creatingJobseeker } = useCreateJobseekerProfile();
-  const { mutateAsync: updateJobseekerAsync, isPending: updatingJobseeker } = useUpdateJobseekerProfile();
+  // Local state for profile data
+  const [jobseekerProfile, setJobseekerProfile] = React.useState<JobseekerProfileResponse | null>(null);
+  const [employerProfile, setEmployerProfile] = React.useState<EmployerProfileResponse | null>(null);
+  const [workExperience, setWorkExperience] = React.useState<WorkExperienceResponse[]>([]);
+  const [education, setEducation] = React.useState<EducationResponse[]>([]);
+  const [skills, setSkills] = React.useState<JobseekerSkillResponse[]>([]);
+  const [completionPercentage, setCompletionPercentage] = React.useState(0);
 
-  // Employer mutations
-  const { mutateAsync: createEmployerAsync } = useCreateEmployerProfile();
+  const loadAllData = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
 
-  // Experience mutations
-  const { mutateAsync: addExperienceAsync } = useAddWorkExperience();
-  const { mutateAsync: updateExperienceAsync } = useUpdateWorkExperience();
-  const { mutateAsync: deleteExperienceAsync } = useDeleteWorkExperience();
+      // Try to load jobseeker profile first
+      try {
+        const [profile, exp, edu, sk, completion] = await Promise.all([
+          profileApi.getMyJobseekerProfile(),
+          profileApi.getMyWorkExperience(),
+          profileApi.getMyEducation(),
+          profileApi.getMySkills(),
+          profileApi.getJobseekerCompletion(),
+        ]);
 
-  // Education mutations
-  const { mutateAsync: addEducationAsync } = useAddEducation();
-  const { mutateAsync: updateEducationAsync } = useUpdateEducation();
-  const { mutateAsync: deleteEducationAsync } = useDeleteEducation();
+        setJobseekerProfile(profile);
+        setWorkExperience(exp);
+        setEducation(edu);
+        setSkills(sk);
+        setCompletionPercentage(completion.completionPercentage);
+      } catch (err: any) {
+        // If 404, try employer profile
+        if (err.response?.status === 404) {
+          try {
+            const empProfile = await profileApi.getMyEmployerProfile();
+            setEmployerProfile(empProfile);
+          } catch (empErr) {
+            console.log('No profile found yet');
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load profile data:', err);
+    }
+  }, [profileApi]);
 
-  // Skills mutations
-  const { mutateAsync: addSkillAsync } = useAddSkill();
-  const { mutateAsync: removeSkillAsync } = useRemoveSkill();
-
-  // Auto-load profile on mount if explicitly enabled AND user is authenticated
+  // Auto-load profile on mount if enabled
   useEffect(() => {
     if (autoLoad) {
-      const token = localStorage.getItem('authToken');
+      const token = localStorage.getItem('token');
       if (token) {
         loadAllData();
       }
     }
-  }, [autoLoad]);
-
-  const loadAllData = useCallback(async () => {
-    try {
-      await Promise.all([
-        refetchJobseeker(),
-        refetchEmployer(),
-        refetchExperience(),
-        refetchEducation(),
-        refetchSkills(),
-      ]);
-    } catch (err) {
-      console.error('Failed to load profile data:', err);
-    }
-  }, [refetchJobseeker, refetchEmployer, refetchExperience, refetchEducation, refetchSkills]);
+  }, [autoLoad, loadAllData]);
 
   const createJobseekerProfileCb = useCallback(
     async (data: CreateJobseekerProfileRequest) => {
-      await createJobseekerAsync(data);
-      await refetchJobseeker();
+      const profile = await profileApi.createJobseekerProfile(data);
+      setJobseekerProfile(profile);
+      await loadAllData();
     },
-    [createJobseekerAsync, refetchJobseeker]
+    [profileApi, loadAllData]
   );
 
   const updateJobseekerProfileCb = useCallback(
     async (data: UpdateJobseekerProfileRequest) => {
-      await updateJobseekerAsync(data);
-      await refetchJobseeker();
+      const profile = await profileApi.updateMyJobseekerProfile(data);
+      setJobseekerProfile(profile);
+      const completion = await profileApi.getJobseekerCompletion();
+      setCompletionPercentage(completion.completionPercentage);
     },
-    [updateJobseekerAsync, refetchJobseeker]
+    [profileApi]
   );
 
   const createEmployerProfileCb = useCallback(
     async (data: CreateEmployerProfileRequest) => {
-      await createEmployerAsync(data);
-      await refetchEmployer();
+      const profile = await profileApi.createEmployerProfile(data);
+      setEmployerProfile(profile);
     },
-    [createEmployerAsync, refetchEmployer]
+    [profileApi]
   );
 
   const addWorkExperienceCb = useCallback(
     async (data: AddWorkExperienceRequest) => {
-      await addExperienceAsync(data);
-      await refetchExperience();
+      await profileApi.addWorkExperience(data);
+      const exp = await profileApi.getMyWorkExperience();
+      setWorkExperience(exp);
+      const completion = await profileApi.getJobseekerCompletion();
+      setCompletionPercentage(completion.completionPercentage);
     },
-    [addExperienceAsync, refetchExperience]
+    [profileApi]
   );
 
   const updateWorkExperienceCb = useCallback(
     async (experienceId: number, data: UpdateWorkExperienceRequest) => {
-      await updateExperienceAsync({ id: experienceId, data });
-      await refetchExperience();
+      await profileApi.updateWorkExperience(experienceId, data);
+      const exp = await profileApi.getMyWorkExperience();
+      setWorkExperience(exp);
     },
-    [updateExperienceAsync, refetchExperience]
+    [profileApi]
   );
 
   const deleteWorkExperienceCb = useCallback(
     async (experienceId: number) => {
-      await deleteExperienceAsync(experienceId);
-      await refetchExperience();
+      await profileApi.deleteWorkExperience(experienceId);
+      setWorkExperience(prev => prev.filter(e => e.experienceId !== experienceId));
     },
-    [deleteExperienceAsync, refetchExperience]
+    [profileApi]
   );
 
   const addEducationCb = useCallback(
     async (data: AddEducationRequest) => {
-      await addEducationAsync(data);
-      await refetchEducation();
+      await profileApi.addEducation(data);
+      const edu = await profileApi.getMyEducation();
+      setEducation(edu);
+      const completion = await profileApi.getJobseekerCompletion();
+      setCompletionPercentage(completion.completionPercentage);
     },
-    [addEducationAsync, refetchEducation]
+    [profileApi]
   );
 
   const updateEducationCb = useCallback(
     async (educationId: number, data: UpdateEducationRequest) => {
-      await updateEducationAsync({ id: educationId, data });
-      await refetchEducation();
+      await profileApi.updateEducation(educationId, data);
+      const edu = await profileApi.getMyEducation();
+      setEducation(edu);
     },
-    [updateEducationAsync, refetchEducation]
+    [profileApi]
   );
 
   const deleteEducationCb = useCallback(
     async (educationId: number) => {
-      await deleteEducationAsync(educationId);
-      await refetchEducation();
+      await profileApi.deleteEducation(educationId);
+      setEducation(prev => prev.filter(e => e.educationId !== educationId));
     },
-    [deleteEducationAsync, refetchEducation]
+    [profileApi]
   );
 
   const addSkillCb = useCallback(
     async (data: AddSkillRequest) => {
-      await addSkillAsync(data);
-      await refetchSkills();
+      await profileApi.addSkillToProfile(data);
+      const sk = await profileApi.getMySkills();
+      setSkills(sk);
+      const completion = await profileApi.getJobseekerCompletion();
+      setCompletionPercentage(completion.completionPercentage);
     },
-    [addSkillAsync, refetchSkills]
+    [profileApi]
   );
 
   const removeSkillCb = useCallback(
     async (skillId: number) => {
-      await removeSkillAsync(skillId);
-      await refetchSkills();
+      await profileApi.deleteSkill(skillId);
+      setSkills(prev => prev.filter(s => s.id !== skillId));
     },
-    [removeSkillAsync, refetchSkills]
+    [profileApi]
   );
 
   const refreshProfile = useCallback(async () => {
@@ -225,14 +232,14 @@ export const ProfileProvider: React.FC<{ children: ReactNode; autoLoad?: boolean
 
   const value = useMemo<ProfileContextType>(
     () => ({
-      jobseekerProfile: jobseekerData || null,
-      employerProfile: employerData || null,
-      workExperience: experienceData || [],
-      education: educationData || [],
-      skills: skillsData || [],
-      completionPercentage: completionData?.completionPercentage || 0,
-      loading: jobseekerLoading || creatingJobseeker || updatingJobseeker,
-      error: null,
+      jobseekerProfile,
+      employerProfile,
+      workExperience,
+      education,
+      skills,
+      completionPercentage,
+      loading: profileApi.loading,
+      error: profileApi.error,
 
       createJobseekerProfile: createJobseekerProfileCb,
       updateJobseekerProfile: updateJobseekerProfileCb,
@@ -250,15 +257,14 @@ export const ProfileProvider: React.FC<{ children: ReactNode; autoLoad?: boolean
       refreshProfile,
     }),
     [
-      jobseekerData,
-      employerData,
-      experienceData,
-      educationData,
-      skillsData,
-      completionData,
-      jobseekerLoading,
-      creatingJobseeker,
-      updatingJobseeker,
+      jobseekerProfile,
+      employerProfile,
+      workExperience,
+      education,
+      skills,
+      completionPercentage,
+      profileApi.loading,
+      profileApi.error,
       createJobseekerProfileCb,
       updateJobseekerProfileCb,
       createEmployerProfileCb,

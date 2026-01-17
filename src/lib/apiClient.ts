@@ -1,41 +1,25 @@
-import axios, { AxiosInstance, AxiosError } from 'axios';
+import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
 
-// API Configuration
-const API_CONFIG = {
-  USER_SERVICE: 'http://localhost:8080/api/v1',
-  PROFILE_SERVICE: 'http://localhost:8081/api/v1',
-  JOB_SERVICE: 'http://localhost:8082/api/v1',
-};
+// Base URLs from environment variables
+const USER_SERVICE_URL = import.meta.env.VITE_USER_SERVICE_URL;
+const PROFILE_SERVICE_URL = import.meta.env.VITE_PROFILE_SERVICE_URL;
+const JOB_SERVICE_URL = import.meta.env.VITE_JOB_SERVICE_URL;
+const API_TIMEOUT = Number(import.meta.env.VITE_API_TIMEOUT) || 10000;
 
-// Error handling
-export interface ApiError {
-  status: number;
-  message: string;
-  data?: any;
-}
-
-export const handleApiError = (error: AxiosError): ApiError => {
-  return {
-    status: error.response?.status || 500,
-    message: (error.response?.data as any)?.message || error.message,
-    data: error.response?.data,
-  };
-};
-
-// Create axios instances with interceptors
-const createApiClient = (baseURL: string): AxiosInstance => {
-  const instance = axios.create({
+// Create axios instances for each service
+const createServiceClient = (baseURL: string): AxiosInstance => {
+  const client = axios.create({
     baseURL,
-    timeout: 10000,
+    timeout: API_TIMEOUT,
     headers: {
       'Content-Type': 'application/json',
     },
   });
 
-  // Request interceptor - Add token to headers
-  instance.interceptors.request.use(
+  // Request interceptor - Add JWT token
+  client.interceptors.request.use(
     (config) => {
-      const token = localStorage.getItem('authToken');
+      const token = localStorage.getItem('auth_token');
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
@@ -45,26 +29,35 @@ const createApiClient = (baseURL: string): AxiosInstance => {
   );
 
   // Response interceptor - Handle errors
-  instance.interceptors.response.use(
+  client.interceptors.response.use(
     (response) => response,
-    (error: AxiosError) => {
-      // Handle 401 - Token expired/invalid
+    (error) => {
       if (error.response?.status === 401) {
-        localStorage.removeItem('authToken');
+        // Token expired or invalid
+        localStorage.removeItem('auth_token');
         localStorage.removeItem('user');
-        window.location.href = '/login';
+        window.location.href = '/';
       }
-      return Promise.reject(handleApiError(error));
+      return Promise.reject(error);
     }
   );
 
-  return instance;
+  return client;
 };
 
-// Create service-specific clients
-export const userServiceClient = createApiClient(API_CONFIG.USER_SERVICE);
-export const profileServiceClient = createApiClient(API_CONFIG.PROFILE_SERVICE);
-export const jobServiceClient = createApiClient(API_CONFIG.JOB_SERVICE);
+// Export service clients
+export const userServiceClient = createServiceClient(USER_SERVICE_URL);
+export const profileServiceClient = createServiceClient(PROFILE_SERVICE_URL);
+export const jobServiceClient = createServiceClient(JOB_SERVICE_URL);
 
-// Export URLs for reference
-export const API_URLS = API_CONFIG;
+// Helper function to handle API calls
+export const apiCall = async <T>(
+  apiFunc: () => Promise<any>
+): Promise<T> => {
+  try {
+    const response = await apiFunc();
+    return response.data;
+  } catch (error: any) {
+    throw error.response?.data || error;
+  }
+};

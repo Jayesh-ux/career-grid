@@ -1,179 +1,296 @@
-import { userServiceClient, handleApiError } from '@/lib/apiClient';
-import {
-  UserResponse,
-  AuthResponse,
-  RegisterRequest,
-  LoginRequest,
-  OtpRequest,
-  ForgotPasswordRequest,
-  VerifyResetOtpRequest,
-  ResetPasswordRequest,
-  ResendOtpRequest,
-  ChangePasswordRequest,
-  UpdateUserRequest,
-  DeactivateAccountRequest,
-  VerifyUpdatedPhoneRequest,
-  LoginHistoryResponse,
-} from '@/api/types/user';
+import { userApi } from '../apiClient';
 
-export const userService = {
-  // Authentication
-  register: async (data: RegisterRequest) => {
-    try {
-      const response = await userServiceClient.post('/auth/register', data);
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+// ============================================
+// TYPES & INTERFACES
+// ============================================
 
-  login: async (data: LoginRequest) => {
-    try {
-      const response = await userServiceClient.post('/auth/login', data);
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export interface RegisterRequest {
+  email: string;
+  password: string;
+  phone: string;
+  userType: 'JOBSEEKER' | 'EMPLOYER' | 'COMPANYADMIN' | 'SUPERADMIN';
+  name: string;
+}
 
-  verifyRegistrationOtp: async (data: OtpRequest) => {
-    try {
-      const response = await userServiceClient.post('/auth/verify-registration-otp', data);
-      return response.data as AuthResponse;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export interface VerifyRegistrationOtpRequest {
+  phone: string;
+  otp: string;
+}
 
-  verifyLoginOtp: async (data: OtpRequest) => {
-    try {
-      const response = await userServiceClient.post('/auth/verify-login-otp', data);
-      return response.data as AuthResponse;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
 
-  forgotPassword: async (data: ForgotPasswordRequest) => {
-    try {
-      const response = await userServiceClient.post('/auth/forgot-password', data);
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export interface VerifyLoginOtpRequest {
+  phone: string;
+  otp: string;
+}
 
-  verifyResetOtp: async (data: VerifyResetOtpRequest) => {
-    try {
-      const response = await userServiceClient.post('/auth/verify-reset-otp', data);
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export interface ForgotPasswordRequest {
+  phone: string;
+}
 
-  resetPassword: async (data: ResetPasswordRequest) => {
-    try {
-      const response = await userServiceClient.post('/auth/reset-password', data);
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export interface VerifyResetOtpRequest {
+  phone: string;
+  otp: string;
+}
 
-  resendOtp: async (data: ResendOtpRequest) => {
-    try {
-      const response = await userServiceClient.post('/auth/resend-otp', data);
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export interface ResetPasswordRequest {
+  resetToken: string;
+  newPassword: string;
+}
 
-  // User Profile
-  getCurrentUser: async () => {
-    try {
-      const response = await userServiceClient.get('/users/me');
-      return response.data as UserResponse;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export interface ResendOtpRequest {
+  phone: string;
+  purpose: 'registration' | 'login' | 'passwordreset';
+}
 
-  updateUser: async (data: UpdateUserRequest) => {
-    try {
-      const response = await userServiceClient.put('/users/me', data);
-      return response.data as UserResponse;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+}
 
-  deactivateAccount: async (data: DeactivateAccountRequest) => {
-    try {
-      const response = await userServiceClient.delete('/users/me', { data });
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export interface UpdateUserRequest {
+  name?: string;
+  email?: string;
+  phone?: string;
+}
 
-  changePassword: async (data: ChangePasswordRequest) => {
-    try {
-      const response = await userServiceClient.post('/users/change-password', data);
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export interface DeactivateAccountRequest {
+  password: string;
+  reason: string;
+}
 
-  // Phone Verification
-  requestPhoneVerification: async () => {
-    try {
-      const response = await userServiceClient.post('/users/request-phone-verification');
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export interface AuthResponse {
+  token: string;
+  userId: number;
+  name: string;
+  email: string;
+  userType: string;
+}
 
-  verifyUpdatedPhone: async (data: VerifyUpdatedPhoneRequest) => {
-    try {
-      const response = await userServiceClient.post('/users/verify-updated-phone', data);
-      return response.data as UserResponse;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export interface UserResponse {
+  userId: number;
+  name: string;
+  email: string;
+  phone: string;
+  userType: string;
+  isVerified: boolean;
+  isActive: boolean;
+  createdAt: string;
+}
 
-  // Login History
-  getLoginHistory: async (limit: number = 10) => {
-    try {
-      const response = await userServiceClient.get('/users/login-history', {
-        params: { limit },
-      });
-      return response.data as LoginHistoryResponse[];
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+export interface LoginHistoryResponse {
+  loginId: number;
+  phone: string;
+  email: string;
+  ipAddress: string;
+  browser: string;
+  loginTime: string;
+  status: 'SUCCESS' | 'FAILED';
+  failureReason: string | null;
+}
 
-  // Health Check
-  healthCheck: async () => {
-    try {
-      const response = await userServiceClient.get('/health');
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+// ============================================
+// AUTHENTICATION ENDPOINTS (Public)
+// ============================================
 
-  readinessCheck: async () => {
-    try {
-      const response = await userServiceClient.get('/health/ready');
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error as any);
-    }
-  },
+/**
+ * Step 1: Register new user
+ * Backend sends OTP to phone number
+ */
+export const registerUser = async (data: RegisterRequest): Promise<string> => {
+  const response = await userApi.post<string>('/api/v1/auth/register', data);
+  return response.data; // "OTP sent to phone. Please verify to complete registration."
+};
+
+/**
+ * Step 2: Verify registration OTP
+ * Returns JWT token on success
+ */
+export const verifyRegistrationOtp = async (
+  data: VerifyRegistrationOtpRequest
+): Promise<AuthResponse> => {
+  const response = await userApi.post<AuthResponse>(
+    '/api/v1/auth/verify-registration-otp',
+    data
+  );
+  return response.data;
+};
+
+/**
+ * Step 1: Login with email/password
+ * Backend sends OTP to registered phone (2FA)
+ */
+export const loginUser = async (data: LoginRequest): Promise<string> => {
+  const response = await userApi.post<string>('/api/v1/auth/login', data);
+  return response.data; // "OTP sent to phone. Please verify to complete login."
+};
+
+/**
+ * Step 2: Verify login OTP
+ * Returns JWT token on success
+ */
+export const verifyLoginOtp = async (
+  data: VerifyLoginOtpRequest
+): Promise<AuthResponse> => {
+  const response = await userApi.post<AuthResponse>(
+    '/api/v1/auth/verify-login-otp',
+    data
+  );
+  return response.data;
+};
+
+/**
+ * Forgot password - Request OTP
+ */
+export const forgotPassword = async (
+  data: ForgotPasswordRequest
+): Promise<string> => {
+  const response = await userApi.post<string>('/api/v1/auth/forgot-password', data);
+  return response.data; // "OTP sent to your phone. Please verify to reset password."
+};
+
+/**
+ * Verify reset OTP - Get reset token
+ */
+export const verifyResetOtp = async (
+  data: VerifyResetOtpRequest
+): Promise<string> => {
+  const response = await userApi.post<string>(
+    '/api/v1/auth/verify-reset-otp',
+    data
+  );
+  return response.data; // "OTP verified. Use the reset token to set new password: {RESETTOKEN}"
+};
+
+/**
+ * Reset password with reset token
+ */
+export const resetPassword = async (data: ResetPasswordRequest): Promise<string> => {
+  const response = await userApi.post<string>('/api/v1/auth/reset-password', data);
+  return response.data; // "Password reset successful. You can now login with your new password."
+};
+
+/**
+ * Resend OTP with rate limiting
+ */
+export const resendOtp = async (data: ResendOtpRequest): Promise<string> => {
+  const response = await userApi.post<string>('/api/v1/auth/resend-otp', data);
+  return response.data; // "New OTP sent to your phone for {purpose}"
+};
+
+// ============================================
+// USER ACCOUNT MANAGEMENT (Protected - Requires JWT)
+// ============================================
+
+/**
+ * Get current authenticated user
+ */
+export const getCurrentUser = async (): Promise<UserResponse> => {
+  const response = await userApi.get<UserResponse>('/api/v1/users/me');
+  return response.data;
+};
+
+/**
+ * Update current user (name, email, phone)
+ * Note: Changing email/phone requires re-verification
+ */
+export const updateCurrentUser = async (
+  data: UpdateUserRequest
+): Promise<UserResponse> => {
+  const response = await userApi.put<UserResponse>('/api/v1/users/me', data);
+  return response.data;
+};
+
+/**
+ * Change password
+ */
+export const changePassword = async (
+  data: ChangePasswordRequest
+): Promise<string> => {
+  const response = await userApi.post<string>(
+    '/api/v1/users/change-password',
+    data
+  );
+  return response.data; // "Password changed successfully"
+};
+
+/**
+ * Get login history with pagination
+ */
+export const getLoginHistory = async (
+  limit: number = 10
+): Promise<LoginHistoryResponse[]> => {
+  const response = await userApi.get<LoginHistoryResponse[]>(
+    `/api/v1/users/login-history?limit=${limit}`
+  );
+  return response.data;
+};
+
+/**
+ * Deactivate account (soft delete)
+ */
+export const deactivateAccount = async (
+  data: DeactivateAccountRequest
+): Promise<string> => {
+  const response = await userApi.delete<string>('/api/v1/users/me', { data });
+  return response.data; // "Account deactivated successfully. You can reactivate by contacting support."
+};
+
+/**
+ * Request phone verification after updating phone
+ */
+export const requestPhoneVerification = async (): Promise<string> => {
+  const response = await userApi.post<string>(
+    '/api/v1/users/request-phone-verification'
+  );
+  return response.data; // "OTP sent to your phone number"
+};
+
+/**
+ * Verify updated phone with OTP
+ */
+export const verifyUpdatedPhone = async (otp: string): Promise<UserResponse> => {
+  const response = await userApi.post<UserResponse>(
+    '/api/v1/users/verify-updated-phone',
+    { otp }
+  );
+  return response.data;
+};
+
+// ============================================
+// NEWSLETTER (Public)
+// ============================================
+
+export interface NewsletterSubscribeRequest {
+  email: string;
+}
+
+/**
+ * Subscribe to newsletter
+ */
+export const subscribeNewsletter = async (
+  data: NewsletterSubscribeRequest
+): Promise<string> => {
+  const response = await userApi.post<string>(
+    '/api/v1/newsletter/subscribe',
+    data
+  );
+  return response.data; // "Thanks for subscribing!"
+};
+
+// ============================================
+// HEALTH CHECK (Public)
+// ============================================
+
+export const checkHealth = async () => {
+  const response = await userApi.get('/api/v1/health');
+  return response.data;
+};
+
+export const checkReadiness = async () => {
+  const response = await userApi.get('/api/v1/health/ready');
+  return response.data;
 };

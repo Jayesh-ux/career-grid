@@ -1,202 +1,216 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  ReactNode,
+} from 'react';
 import {
-  useRegister,
-  useVerifyLoginOtp,
-  useLogin,
-  useVerifyRegistrationOtp,
-  useResendOtp,
-  useForgotPassword,
-  useVerifyResetOtp,
-  useResetPassword,
-  useCurrentUser,
-  useChangePassword,
-  useLoginHistory,
-  useRequestPhoneVerification,
-  useVerifyUpdatedPhone,
-  useUpdateUser,
-  useDeactivateAccount,
-} from '@/hooks/useUserApi';
-import { UserResponse, AuthResponse } from '@/api/types/user';
+  registerUser,
+  verifyRegistrationOtp,
+  loginUser,
+  verifyLoginOtp,
+  getCurrentUser,
+  AuthResponse,
+} from '@/lib/services/userService';
+import { showToast } from '@/components/Toast';
 
-export type AuthState = {
+export type UserType = 'JOBSEEKER' | 'EMPLOYER' | 'COMPANYADMIN' | 'SUPERADMIN';
+
+export interface AuthUser {
+  userId: number;
+  name: string;
+  email: string;
+  userType: UserType;
+}
+
+interface AuthContextValue {
+  user: AuthUser | null;
   token: string | null;
-  user: UserResponse | null;
   loading: boolean;
-};
-
-type AuthContextValue = AuthState & {
-  // flows
-  register: (input: { email: string; password: string; phone?: string; userType: string; name?: string }) => Promise<void>;
-  verifyRegistrationOtp: (input: { phone: string; otp: string }) => Promise<void>;
-  login: (input: { email: string; password: string }) => Promise<void>;
-  verifyLoginOtp: (input: { phone: string; otp: string }) => Promise<void>;
-  resendOtp: (input: { phone: string; purpose: 'registration' | 'login' | 'password_reset' }) => Promise<void>;
-  forgotPassword: (input: { phone: string }) => Promise<void>;
-  verifyResetOtp: (input: { phone: string; otp: string }) => Promise<string>; // returns resetToken
-  resetPassword: (input: { resetToken: string; newPassword: string }) => Promise<void>;
-  // user
-  refreshMe: () => Promise<void>;
-  updateMe: (input: { name?: string; email?: string; phone?: string }) => Promise<void>;
-  requestPhoneVerification: () => Promise<void>;
-  verifyUpdatedPhone: (input: { otp: string }) => Promise<void>;
-  changePassword: (input: { currentPassword: string; newPassword: string }) => Promise<void>;
-  deactivate: (input: { password: string; reason?: string }) => Promise<void>;
-  loginHistory: (limit?: number) => Promise<any>;
+  isLoading: boolean; // for UI actions
+  isAuthenticated: boolean;
+  initiateLogin: (email: string, password: string) => Promise<string>; // returns phone
+  initiateRegister: (data: {
+    name: string;
+    email: string;
+    password: string;
+    phone: string;
+    userType: UserType;
+  }) => Promise<void>;
+  verifyOtp: (
+    phone: string,
+    otp: string,
+    purpose: 'login' | 'registration'
+  ) => Promise<void>;
   logout: () => void;
-};
+  refreshUser: () => Promise<void>;
+}
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem('authToken'));
-  const [user, setUser] = useState<UserResponse | null>(null);
-  const [loading, setLoading] = useState<boolean>(!!localStorage.getItem('authToken'));
+interface AuthProviderProps {
+  children: ReactNode;
+  autoLoad?: boolean;
+}
 
-  // API mutations
-  const { mutateAsync: registerAsync } = useRegister();
-  const { mutateAsync: verifyRegOtpAsync } = useVerifyRegistrationOtp();
-  const { mutateAsync: loginAsync } = useLogin();
-  const { mutateAsync: verifyLoginOtpAsync } = useVerifyLoginOtp();
-  const { mutateAsync: resendOtpAsync } = useResendOtp();
-  const { mutateAsync: forgotPasswordAsync } = useForgotPassword();
-  const { mutateAsync: verifyResetOtpAsync } = useVerifyResetOtp();
-  const { mutateAsync: resetPasswordAsync } = useResetPassword();
-  const { mutateAsync: changePasswordAsync } = useChangePassword();
-  const { mutateAsync: requestPhoneVerAsync } = useRequestPhoneVerification();
-  const { mutateAsync: verifyUpdatedPhoneAsync } = useVerifyUpdatedPhone();
-  const { mutateAsync: updateUserAsync } = useUpdateUser();
-  const { mutateAsync: deactivateAsync } = useDeactivateAccount();
-  const { data: currentUserData, refetch: refetchUser } = useCurrentUser(!!token);
-  const { mutateAsync: getLoginHistoryAsync } = useLoginHistory();
+export const AuthProvider: React.FC<AuthProviderProps> = ({
+  children,
+  autoLoad = true,
+}) => {
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(autoLoad);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  // Sync currentUser data to state
+  // Load from localStorage on mount
   useEffect(() => {
-    if (currentUserData) {
-      setUser(currentUserData);
-      setLoading(false);
-    } else if (!token) {
-      setLoading(false);
+    if (!autoLoad) return;
+
+    const storedToken = localStorage.getItem('token');
+    const storedUser = localStorage.getItem('user');
+
+    if (storedToken && storedUser) {
+      try {
+        setToken(storedToken);
+        setUser(JSON.parse(storedUser));
+      } catch {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+      }
     }
-  }, [currentUserData, token]);
 
-  // persist token
-  useEffect(() => {
-    if (token) {
-      localStorage.setItem('authToken', token);
-    } else {
-      localStorage.removeItem('authToken');
+    setLoading(false);
+  }, [autoLoad]);
+
+  const isAuthenticated = !!token && !!user;
+
+  const saveAuthData = (auth: AuthResponse) => {
+    const authUser: AuthUser = {
+      userId: auth.userId,
+      name: auth.name,
+      email: auth.email,
+      userType: auth.userType as UserType,
+    };
+
+    setToken(auth.token);
+    setUser(authUser);
+    localStorage.setItem('token', auth.token);
+    localStorage.setItem('user', JSON.stringify(authUser));
+  };
+
+  // Step 1: Login with email/password – returns phone for OTP
+  const initiateLogin = async (email: string, password: string): Promise<string> => {
+    setIsLoading(true);
+    try {
+      const message = await loginUser({ email, password });
+      // Backend uses the registered phone; your UI already knows nothing about it,
+      // so in a real implementation you’d fetch the phone from /users/me after OTP.
+      // Here, we return a placeholder phone until backend explicitly returns it.
+      // If your backend returns phone in headers/body, adjust accordingly.
+
+      // For now, assume phone is tied to user and you collect it separately:
+      const normalizedEmail = email.trim();
+      showToast.success(message || 'OTP sent to your phone for login');
+      // You might instead return an empty string and not show phone in modal
+      return '';
+    } finally {
+      setIsLoading(false);
     }
-  }, [token]);
+  };
 
-  // Refetch user when token changes
-  useEffect(() => {
-    if (token) {
-      setLoading(true);
-      refetchUser();
-    } else {
-      setLoading(false);
-      setUser(null);
+  // Step 1: Register – sends OTP to phone
+  const initiateRegister = async (data: {
+    name: string;
+    email: string;
+    password: string;
+    phone: string;
+    userType: UserType;
+  }): Promise<void> => {
+    setIsLoading(true);
+    try {
+      const message = await registerUser({
+        name: data.name,
+        email: data.email,
+        password: data.password,
+        phone: data.phone,
+        userType: data.userType,
+      });
+      showToast.success(
+        message || 'OTP sent to your phone. Please verify to complete registration.'
+      );
+    } finally {
+      setIsLoading(false);
     }
-  }, [token, refetchUser]);
+  };
 
-  // flows
-  const register = useCallback(async (input: { email: string; password: string; phone?: string; userType: string; name?: string }) => {
-    await registerAsync(input);
-  }, [registerAsync]);
+  // Step 2: Verify OTP (login or registration)
+  const verifyOtp = async (
+    phone: string,
+    otp: string,
+    purpose: 'login' | 'registration'
+  ): Promise<void> => {
+    setIsLoading(true);
+    try {
+      let auth: AuthResponse;
+      if (purpose === 'login') {
+        auth = await verifyLoginOtp({ phone, otp });
+      } else {
+        auth = await verifyRegistrationOtp({ phone, otp });
+      }
+      saveAuthData(auth);
+      showToast.success('OTP verified successfully');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-  const verifyRegistrationOtp = useCallback(async (input: { phone: string; otp: string }) => {
-    const res = await verifyRegOtpAsync(input);
-    setToken(res.token);
-  }, [verifyRegOtpAsync]);
-
-  const login = useCallback(async (input: { email: string; password: string }) => {
-    await loginAsync(input);
-  }, [loginAsync]);
-
-  const verifyLoginOtp = useCallback(async (input: { phone: string; otp: string }) => {
-    const res = await verifyLoginOtpAsync(input);
-    setToken(res.token);
-  }, [verifyLoginOtpAsync]);
-
-  const resendOtp = useCallback(async (input: { phone: string; purpose: 'registration' | 'login' | 'password_reset' }) => {
-    await resendOtpAsync(input);
-  }, [resendOtpAsync]);
-
-  const forgotPassword = useCallback(async (input: { phone: string }) => {
-    await forgotPasswordAsync(input);
-  }, [forgotPasswordAsync]);
-
-  const verifyResetOtp = useCallback(async (input: { phone: string; otp: string }) => {
-    const resetToken = await verifyResetOtpAsync(input);
-    return resetToken;
-  }, [verifyResetOtpAsync]);
-
-  const resetPassword = useCallback(async (input: { resetToken: string; newPassword: string }) => {
-    await resetPasswordAsync(input);
-  }, [resetPasswordAsync]);
-
-  // user
-  const updateMe = useCallback(async (input: { name?: string; email?: string; phone?: string }) => {
-    const updated = await updateUserAsync(input);
-    setUser(updated);
-  }, [updateUserAsync]);
-
-  const requestPhoneVerification = useCallback(async () => {
-    await requestPhoneVerAsync({});
-  }, [requestPhoneVerAsync]);
-
-  const verifyUpdatedPhone = useCallback(async (input: { otp: string }) => {
-    const updated = await verifyUpdatedPhoneAsync(input);
-    setUser(updated);
-  }, [verifyUpdatedPhoneAsync]);
-
-  const changePassword = useCallback(async (input: { currentPassword: string; newPassword: string }) => {
-    await changePasswordAsync(input);
-  }, [changePasswordAsync]);
-
-  const deactivate = useCallback(async (input: { password: string; reason?: string }) => {
-    await deactivateAsync(input);
-    // After deactivate, log out locally
+  const logout = () => {
     setToken(null);
     setUser(null);
-  }, [deactivateAsync]);
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    showToast.info('You have been logged out');
+  };
 
-  const loginHistory = useCallback(async (limit = 10) => {
-    return await getLoginHistoryAsync(limit);
-  }, [getLoginHistoryAsync]);
+  const refreshUser = async (): Promise<void> => {
+    if (!token) return;
+    try {
+      const data = await getCurrentUser();
+      const authUser: AuthUser = {
+        userId: data.userId,
+        name: data.name,
+        email: data.email,
+        userType: data.userType as UserType,
+      };
+      setUser(authUser);
+      localStorage.setItem('user', JSON.stringify(authUser));
+    } catch {
+      // If token is invalid, force logout
+      logout();
+    }
+  };
 
-  const logout = useCallback(() => {
-    setToken(null);
-    setUser(null);
-  }, []);
-
-  const value = useMemo<AuthContextValue>(() => ({
-    token,
+  const value: AuthContextValue = {
     user,
+    token,
     loading,
-    register,
-    verifyRegistrationOtp,
-    login,
-    verifyLoginOtp,
-    resendOtp,
-    forgotPassword,
-    verifyResetOtp,
-    resetPassword,
-    refreshMe: refetchUser,
-    updateMe,
-    requestPhoneVerification,
-    verifyUpdatedPhone,
-    changePassword,
-    deactivate,
-    loginHistory,
+    isLoading,
+    isAuthenticated,
+    initiateLogin,
+    initiateRegister,
+    verifyOtp,
     logout,
-  }), [token, user, loading, register, verifyRegistrationOtp, login, verifyLoginOtp, resendOtp, forgotPassword, verifyResetOtp, resetPassword, refetchUser, updateMe, requestPhoneVerification, verifyUpdatedPhone, changePassword, deactivate, loginHistory, logout]);
+    refreshUser,
+  };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
-export function useAuth() {
+export const useAuth = (): AuthContextValue => {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
+  if (!ctx) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
   return ctx;
-}
+};
